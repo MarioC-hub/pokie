@@ -1,0 +1,14 @@
+expected_value_p0=-0.05555555555555555
+max_nash_conv=1e-12
+kuhn:P0:init:J=0.6666666666666666,0.3333333333333333
+kuhn:P0:init:Q=1.0,0.0
+kuhn:P0:init:K=0.0,1.0
+kuhn:P1:after_check:J=0.6666666666666666,0.3333333333333333
+kuhn:P1:after_check:Q=1.0,0.0
+kuhn:P1:after_check:K=0.0,1.0
+kuhn:P1:vs_bet:J=1.0,0.0
+kuhn:P1:vs_bet:Q=0.6666666666666666,0.3333333333333333
+kuhn:P1:vs_bet:K=0.0,1.0
+kuhn:P0:after_check_bet:J=1.0,0.0
+kuhn:P0:after_check_bet:Q=0.3333333333333333,0.6666666666666666
+kuhn:P0:after_check_bet:K=0.0,1.0

@@ -1,0 +1,4 @@
+# id path
+kuhn_reference_equilibrium_v1 kuhn_reference_equilibrium.fixture
+skewed_matrix_cfr_iteration_1_v1 skewed_matrix_cfr_iteration_1.fixture
+river_polarized_equilibrium_v1 river_polarized_equilibrium.fixture

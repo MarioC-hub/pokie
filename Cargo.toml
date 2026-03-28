@@ -1,0 +1,13 @@
+[workspace]
+members = [
+  "crates/poker-core",
+  "crates/range-core",
+  "crates/config-core",
+  "crates/equity-core",
+  "crates/tree-core",
+  "crates/solver-core",
+  "crates/solve-cache",
+  "crates/job-core",
+  "crates/app-api",
+]
+resolver = "2"
