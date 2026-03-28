@@ -1,54 +1,105 @@
 # Pokie Architecture
 
-`architecture.md` is the source of truth for the repository design.
+`architecture.md` is the source of truth for repository design.
 
-If implementation details, plans, or agent instructions conflict with this file, this file should be updated first or in the same change set as the code that changes behavior.
+If implementation details, plans, or agent instructions conflict with this file, update this file first or in the same change set as the behavior change.
 
-## 1. System Goals
+## 1. Product Charter
 
-Pokie is intended to be a local-first poker analysis workstation that can evolve from a restricted equilibrium tool into a more capable solver platform.
+Pokie is a local-first GTO workstation for serious poker study on a single desktop or laptop.
 
-Primary goals:
-- provide a usable desktop UI for configuring and exploring poker solves
-- make customization workflows fast enough for iterative analysis
-- keep heavy computation in `Rust`
-- preserve a clean path from a desktop-only tool to a reusable backend core
+The long-term product should cover the poker formats most commonly studied by casino and card-room players, especially no-limit hold'em cash games first and tournament study later.
 
-Non-goals for early versions:
-- browser-first multi-user deployment
-- unconstrained full-game no-limit solving
-- premature algorithmic complexity before restricted games are correct and validated
-
-## 2. Product Principles
+The committed v1 product is narrower on purpose:
+- heads-up no-limit Texas Hold'em
+- cash-game semantics only
+- postflop solving from the start of the flop, turn, or river
+- common single-raised-pot and 3-bet-pot study spots
+- exact board and exact player ranges supplied by the user
 
 The system should optimize for:
-- correctness before complexity
-- local responsiveness
+- correctness before breadth
 - deterministic behavior where practical
-- explicit cache behavior
-- modular backend crates
+- explicit cache and artifact behavior
+- a workstation workflow: define a spot, solve or reuse, inspect, iterate
 
-The product should feel like a workstation:
-- edit a scenario
-- run or reuse a solve
-- inspect the result
-- compare it with a nearby variant
-- iterate quickly
+## 2. Scope Decisions
 
-## 3. Top-Level Architecture
+### 2.1 North-Star Goal
 
-The repository should be organized as a monorepo with three layers:
+Over time, Pokie should help users study the kinds of hold'em decisions they encounter in live casinos, card rooms, and common online equivalents.
+
+That does not mean v1 should attempt to solve every poker format. The architecture must protect the v1 slice from scope creep.
+
+### 2.2 Committed v1 Support
+
+| Dimension | v1 Support |
+| --- | --- |
+| Variant | `NLHE` |
+| Game mode | `cash` only |
+| Active players in the solve | exactly `2` |
+| Root street | start of `flop`, `turn`, or `river` |
+| Root origin | common `SRP` and `3BP` study spots entered as exact postflop state |
+| Board input | exact public board cards consistent with the root street |
+| Range input | weighted combo ranges for both players |
+| Positions | solver-facing roles are `OOP` and `IP`; seat labels are study metadata |
+| Stack model | exact chip counts with a validated effective-stack range |
+| Blind and rake model | cash-game blinds plus a simple rake profile |
+| Action abstraction | versioned, finite postflop templates with discrete size sets |
+| Node locks | supported on documented postflop decision nodes |
+| Runtime model | single-machine local execution, no remote service required |
+
+The v1 root is a street-rooted postflop state, not an arbitrary mid-street subtree.
+
+### 2.3 Explicit v1 Non-Goals
+
+The following are out of scope for v1 unless this file and `PLAN.md` are updated first:
+- full preflop solving
+- multiway postflop solving
+- tournament ICM
+- push-fold or reshove chart generation
+- Pot-Limit Omaha or non-hold'em variants
+- exploitative population models
+- arbitrary continuous bet sizing
+- browser-first or multi-user deployment
+- subtree-grafting partial re-solve
+
+## 3. User Workstation Flows
+
+The product is a workstation, not a solver library with a decorative UI.
+
+The core user loop is:
+1. define a study spot
+2. validate and canonicalize it
+3. load an exact hit, resume a compatible artifact, or start a fresh solve
+4. inspect strategy, EV, and combo details
+5. tweak ranges or locks and iterate
+
+The required v1 workstation flows are:
+- create a postflop cash-game scenario from a template or exact street-rooted state
+- run a solve locally with progress and checkpoint visibility
+- reopen a saved artifact and inspect results without recomputing
+- apply supported node locks and compare the new result against the prior baseline later in the roadmap
+
+## 4. Top-Level System Architecture
+
+The repository is a monorepo with three layers:
 
 1. `frontend`
-The React application responsible for configuration, job control, exploration, and comparison workflows.
+   - `React + Vite + TypeScript`
+   - owns editing workflows, layout state, explorer state, and dense study surfaces
 
 2. `desktop shell`
-The Tauri host that packages the app, exposes Rust commands, and forwards progress events between the frontend and backend.
+   - `Tauri v2`
+   - packages the application, exposes commands, and forwards progress events
 
 3. `backend core`
-A Rust cargo workspace containing the poker model, evaluator, tree builder, solver engine, persistence, and application API.
+   - `Rust` workspace
+   - owns poker modeling, tree generation, solving, persistence, and compatibility decisions
 
-## 4. Recommended Repository Layout
+The system is local-first. No remote service is required to build, run, or use the v1 product.
+
+## 5. Recommended Repository Layout
 
 ```text
 pokie/
@@ -63,10 +114,12 @@ pokie/
   crates/
     poker-core/
     range-core/
+    config-core/
     equity-core/
     tree-core/
     solver-core/
     solve-cache/
+    job-core/
     app-api/
   tests/
     fixtures/
@@ -75,353 +128,25 @@ pokie/
 ```
 
 This layout is intentional:
-- the UI remains replaceable without disturbing solver logic
-- the backend can later be exposed via CLI or HTTP without rewriting core crates
-- tests and fixtures are visible at the repository level
-
-## 5. Technology Choices
-
-### Backend
-
-- Language: `Rust`
-- Reasoning:
-  - strong performance profile for solver workloads
-  - memory safety for long-running computation
-  - good fit for deterministic domain modeling and binary artifact formats
-
-### Desktop Shell
-
-- Framework: `Tauri v2`
-- Reasoning:
-  - minimal overhead relative to heavier desktop containers
-  - good interoperability with Rust
-  - straightforward packaging for local desktop use
-
-### Frontend
-
-- Framework: `React + Vite + TypeScript`
-- Reasoning:
-  - fastest path to a dense, highly interactive workstation UI
-  - strong ecosystem for routing, async job control, and custom editors
-  - less implementation risk than a Rust-native UI for a tool with complex editors
-
-Recommended UI support libraries:
-- `TanStack Router` for typed navigation and scenario-driven URL state
-- `TanStack Query` for long-running job orchestration and cache-aware data fetching
-- `shadcn/ui` for adaptable UI primitives
-- `Tailwind CSS` for rapid interface iteration
-
-## 6. Core Domain Model
-
-The backend should model poker in layers.
-
-### 6.1 Card and Range Layer
-
-Responsibilities:
-- card encoding
-- suit and rank utilities
-- deck masks
-- combo enumeration
-- weighted range representation
-- range parsing and normalization
-
-This layer must be deterministic and allocation-conscious because it is used by every higher-level subsystem.
-
-### 6.2 Public Game State Layer
-
-Responsibilities:
-- blind and ante structure
-- player stacks
-- pot construction
-- betting round progression
-- public board state
-- terminal state detection
-
-This layer models what is publicly observable and should stay independent from any specific solving algorithm.
-
-### 6.3 Information-Set Layer
-
-Responsibilities:
-- grouping states by private information visibility
-- representing decision points for imperfect-information solving
-- mapping action histories and private holdings into solver-facing information sets
-
-This layer is essential because poker is not a perfect-information search problem.
-
-### 6.4 Tree Construction Layer
-
-Responsibilities:
-- generate restricted action trees from a configuration
-- enforce stack legality and action legality
-- support node locks and user-imposed constraints
-
-The tree must be generated from a canonical config so that equivalent user inputs map to equivalent solve requests.
-
-## 7. Solver Architecture
-
-The initial architecture should support restricted game solving first, then richer re-solving workflows later.
-
-### 7.1 Why Not Start With Exact Full-Game Solving
-
-Full no-limit poker is too large to solve directly in an unrestricted form for an early local-first product.
-
-The right approach is:
-- define a restricted game
-- solve it well
-- make restricted changes fast
-- expand capability gradually
-
-### 7.2 Algorithm Families
-
-The main algorithm family should be `Counterfactual Regret Minimization` and its practical variants.
-
-Recommended progression:
-- use simple tabular `CFR` for toy games and small validation cases
-- use `CFR+` or `DCFR` for restricted poker trees in the first serious solver
-- add sampling or more advanced re-solving only when profiling shows a real need
-
-### 7.3 Why CFR-Family Algorithms
-
-Reasoning:
-- they are the dominant practical family for large imperfect-information poker games
-- they fit extensive-form games with information sets
-- they converge to approximate Nash equilibria in the settings that matter here
-- they are easier to implement incrementally than more exotic approaches
-
-### 7.4 Proposed Initial Algorithms
-
-#### Toy-Game Validation
-
-Use tabular `CFR` on:
-- Kuhn Poker
-- Leduc Poker or a similarly small imperfect-information game
-
-Purpose:
-- verify information-set indexing
-- verify regret updates
-- verify average strategy accumulation
-- catch structural bugs before poker-specific abstractions obscure them
-
-#### Restricted Poker Solving
-
-Use `CFR+` or `DCFR` on the chosen v1 restricted game.
-
-Reasoning:
-- better practical convergence than naïve CFR
-- still understandable and maintainable
-- fits a local-first desktop analysis product
-
-`DCFR` is attractive if faster practical convergence outweighs slightly more implementation detail.
-`CFR+` is attractive if implementation simplicity and conventional solver lineage are prioritized.
-
-### 7.5 What the Solver Must Persist
-
-At minimum:
-- config hash
-- algorithm version
-- tree version
-- average strategy
-- regret state
-- convergence diagnostics
-- artifact metadata
-
-Persistence is required not only for resumability but for fast customization via warm starts and compatible reuse.
-
-## 8. Fast Customization Design
-
-Fast customization is a product requirement, not a later optimization.
-
-The system should support four latency classes:
-
-- `instant`
-  - pure presentation changes
-  - view filters
-  - compare toggles
-
-- `interactive`
-  - cached result switching
-  - loading nearby variants
-
-- `fast re-solve`
-  - node lock changes
-  - small range changes
-  - small tree changes that preserve enough structure
-
-- `background solve`
-  - large structural changes
-  - major abstraction changes
-  - changes that invalidate prior artifacts
-
-### 8.1 Required Mechanisms
-
-To achieve this, the system needs:
-- canonical config hashing
-- exact artifact caching
-- compatibility-aware warm starts
-- partial re-solving or subtree-local re-solving
-- streamed partial results
-
-### 8.2 Config Hashing
-
-Every solve request must serialize into a canonical `SolveConfig`.
-
-This means:
-- no hidden defaults that can alter semantics silently
-- stable ordering of fields and lists
-- versioned serialization
-- equivalent configs produce identical hashes
-
-The config hash becomes the primary key for:
-- cache lookup
-- comparison baselines
-- result loading
-- reproducibility
-
-### 8.3 Warm Starts
-
-Warm starts should be allowed only when:
-- the tree structure is compatible enough
-- the action abstraction is compatible enough
-- private/public state mapping remains coherent
-- the solver version declares compatibility
-
-Warm starts should not be hidden from the user. The UI should expose whether a solve is:
-- exact cache hit
-- warm-started from a nearby solve
-- partially re-solved
-- solved from scratch
-
-### 8.4 Partial Re-Solving
-
-Partial re-solving is appropriate for:
-- local node locks
-- limited action availability changes
-- some range changes
-
-It is not appropriate when:
-- the overall tree topology changes substantially
-- the abstraction changes invalidate action mapping
-- solver invariants are no longer preserved
-
-This should be implemented conservatively at first. Incorrect reuse is worse than a slower recomputation.
-
-## 9. Persistence and Storage
-
-The storage architecture should separate metadata from large artifacts.
-
-### 9.1 Metadata Store
-
-Use `SQLite` for:
-- solve jobs
-- configs
-- presets
-- recent scenarios
-- artifact manifests
-- compatibility metadata
-
-### 9.2 Artifact Store
-
-Use versioned binary files for:
-- average strategies
-- regrets
-- node summaries
-- diagnostics snapshots
-
-Compression such as `zstd` is appropriate for large artifacts.
-
-### 9.3 Versioning
-
-Every persisted structure must be versioned:
-- config schema version
-- tree generation version
-- solver algorithm version
-- artifact format version
-
-This avoids silent corruption or invalid reuse after architectural changes.
-
-## 10. UI Architecture
-
-The UI should be structured around workflows rather than around backend entities.
-
-### 10.1 Main Screens
-
-- `Scenario Builder`
-  - define blinds, stacks, ante, payouts, rake, ranges, board, and tree template
-
-- `Range Editor`
-  - edit matrices, combos, weights, and presets
-
-- `Tree Builder`
-  - configure allowed actions and node locks
-
-- `Solve Queue`
-  - launch, cancel, resume, and inspect jobs
-
-- `Explorer`
-  - inspect action frequencies, EV, and combo-level details
-
-- `Compare`
-  - compare two solve artifacts or nearby scenario variants
-
-### 10.2 UI Rendering Guidelines
-
-The UI should prefer:
-- custom `canvas` rendering for dense matrices
-- virtualized trees and tables for large result sets
-- asynchronous loading boundaries for large artifacts
-
-The UI should avoid:
-- large naïve DOM grids for matrix-heavy interactions
-- hidden defaults that diverge from the canonical config
-- mixing transient view state with persisted solve input state
-
-## 11. Backend-to-Frontend API
-
-The application API should be thin and explicit.
-
-Command categories:
-- `validate_config`
-- `start_solve`
-- `cancel_solve`
-- `resume_solve`
-- `list_solves`
-- `load_result`
-- `compare_results`
-- `save_preset`
-- `load_preset`
-
-Event categories:
-- `job_started`
-- `job_progress`
-- `job_checkpointed`
-- `job_completed`
-- `job_failed`
-
-The backend should own:
-- validation
-- config canonicalization
-- cache compatibility decisions
-- artifact loading rules
-
-The frontend should own:
-- editing workflows
-- layout state
-- selection state
-- visualization state
-
-## 12. Crate Responsibilities
+- the UI stays replaceable
+- solver logic is isolated from desktop glue
+- config and artifact rules have a dedicated home
+- job orchestration is separate from solver internals
+
+## 6. Crate Responsibilities
 
 ### `poker-core`
 
 Contains:
-- cards
-- ranks and suits
+- card encoding
+- rank and suit utilities
 - deck masks
-- board helpers
-- public-state primitives
+- street and board primitives
+- public-state helpers shared across v1 postflop roots
 
 Must not contain:
 - solver logic
+- persistence policy
 - UI-facing command code
 
 ### `range-core`
@@ -429,18 +154,31 @@ Must not contain:
 Contains:
 - range parsing
 - combo weighting
-- presets
 - normalization helpers
+- range import and export utilities
 
 Must not contain:
 - tree generation
-- persistence orchestration
+- solver updates
+
+### `config-core`
+
+Contains:
+- canonical `SolveConfig`
+- config validation
+- versioned serialization
+- canonical hashing rules
+- distinction between semantic config and UI metadata
+
+Must not contain:
+- tree generation
+- solver iteration logic
 
 ### `equity-core`
 
 Contains:
-- evaluator logic
-- showdown computation
+- hand evaluator logic
+- showdown comparison
 - all-in equity routines
 
 Must not contain:
@@ -450,104 +188,306 @@ Must not contain:
 ### `tree-core`
 
 Contains:
-- game-tree generation
+- street-rooted postflop tree generation for v1
 - information-set mapping
-- action abstraction
+- versioned action templates
 - node-lock modeling
+- tree identity calculation
 
 Must not contain:
-- persistence policy
-- frontend concerns
+- SQLite access
+- desktop concerns
 
 ### `solver-core`
 
 Contains:
 - CFR-family implementations
-- strategy and regret storage
+- average-strategy and regret storage
 - convergence tracking
-- checkpoint support
+- checkpoint state
+- best-response or exploitability approximation helpers
 
 Must not contain:
-- direct SQLite code
+- direct filesystem policy
 - Tauri command handlers
 
 ### `solve-cache`
 
 Contains:
-- config hashing
 - artifact manifests
-- compatibility logic
-- storage loading and saving
+- metadata queries
+- compatibility checks
+- artifact load and save routines
 
 Must not contain:
-- domain-specific UI logic
+- solver updates
+- frontend-specific logic
+
+### `job-core`
+
+Contains:
+- local solve queue
+- cancellation and resume orchestration
+- progress snapshot scheduling
+- runtime resource limits
+
+Must not contain:
+- UI layout state
+- poker-domain math
 
 ### `app-api`
 
 Contains:
 - validated DTOs
 - command handlers
-- application service orchestration
+- event payloads
+- orchestration between `job-core`, `solve-cache`, and domain crates
 
-May depend on:
-- domain crates
-- cache crate
+This is the boundary consumed by Tauri.
 
-Should be the boundary consumed by Tauri.
+## 7. Canonical Data Contracts
 
-## 13. Validation Strategy
+### 7.1 `ScenarioRecord` Versus `SolveConfig`
 
-Validation should happen in ascending realism.
+The system must distinguish between:
 
-### 13.1 Unit Validation
+- `ScenarioRecord`
+  - user-facing workspace data such as title, notes, tags, and last-viewed state
+  - not part of solver semantics
 
-Test:
-- card encoding
-- evaluator correctness
-- range normalization
-- config hashing stability
+- `SolveConfig`
+  - the canonical semantic input to the solver
+  - fully determines validation, tree generation, cache lookup, and reproducibility
 
-### 13.2 Toy-Game Validation
+UI metadata must never affect the `SolveConfig` hash.
 
-Test:
-- information-set construction
-- regret update correctness
-- average strategy accumulation
+### 7.2 Canonical `SolveConfig`
 
-### 13.3 Restricted Poker Regression
+Every solve request must canonicalize into a versioned `SolveConfig` with these field groups:
 
-Test:
-- stable outputs on representative scenarios
-- node-lock handling
-- cache and warm-start compatibility behavior
+- `schema_version`
+- `game`
+  - `variant = nlhe`
+  - `mode = cash`
+  - `active_players = 2`
+- `root_state`
+  - `street`
+  - `board`
+  - `oop_stack`
+  - `ip_stack`
+  - `pot_size`
+  - `player_to_act`
+  - `blind_profile`
+  - `rake_profile`
+- `ranges`
+  - `oop_range`
+  - `ip_range`
+- `tree_template`
+  - `template_id`
+  - `template_version`
+  - per-street discrete size sets
+  - raise policy
+  - all-in policy
+  - maximum raises per street
+- `node_locks`
+  - zero or more lock entries with a canonical node path and normalized action frequencies
+- `solver_settings`
+  - algorithm family
+  - iteration or stopping budget
+  - checkpoint cadence
+  - thread count
+  - deterministic seed where applicable
 
-### 13.4 Performance Validation
+Canonicalization rules:
+- materialize semantic defaults before hashing
+- reject unsupported fields instead of silently ignoring them
+- sort lists and maps into stable order
+- include version fields in the serialized form
+- exclude non-semantic workspace metadata from the hash
 
-Measure:
-- solve runtime
-- memory usage
-- artifact size
-- cache hit rate
-- warm-start speedup
+### 7.3 Result and Artifact Model
 
-## 14. Operational Rules
+The result layer must distinguish between:
 
-The repository should follow these architectural rules:
+- manifest metadata
+  - `artifact_id`
+  - `config_hash`
+  - solver, tree, and artifact schema versions
+  - creation time
+  - parent artifact lineage when reuse occurs
+  - compatibility class used to create the artifact
 
+- queryable summaries
+  - root frequencies
+  - node summaries
+  - EV summaries
+  - convergence diagnostics
+
+- dense strategy payloads
+  - combo-level strategy by node
+  - optional regret or checkpoint state
+
+## 8. Tree, Solver, and Runtime Policy
+
+### 8.1 Action Abstraction
+
+The v1 solver uses versioned finite action templates.
+
+Rules:
+- no arbitrary continuous bet sizes
+- all-in is legal whenever stack rules allow it
+- each template is versioned and named
+- template choice is part of tree identity
+- node locks are accepted only on supported decision nodes with complete, normalized frequencies
+
+The UI may expose a small vetted palette of discrete size overrides, but v1 should not accept unconstrained float inputs as action sizes.
+
+### 8.2 Solver Strategy
+
+Validation path:
+- tabular `CFR` on Kuhn Poker
+- tabular `CFR` on Leduc Poker or an equivalent toy imperfect-information game
+
+Production path:
+- `DCFR` is the preferred v1 production algorithm for heads-up postflop trees
+- `CFR+` is acceptable only if implementation simplicity materially reduces delivery risk
+
+Requirements:
+- average strategy accumulation is mandatory
+- checkpoint state must be versioned
+- convergence diagnostics must be stored and surfaced
+- best-response or exploitability approximation is required for validation work
+
+### 8.3 Job Execution Model
+
+The runtime should start simple:
+- one active solve job at a time in v1
+- queued local jobs are allowed
+- jobs are cancellable
+- checkpoints are periodic and resumable
+- progress snapshots stream to the UI
+
+This keeps resource contention understandable on consumer hardware.
+
+## 9. Storage and Compatibility
+
+### 9.1 Storage Layout
+
+Use:
+- `SQLite` for manifests, presets, recent scenarios, and job metadata
+- versioned binary artifacts for dense strategy and checkpoint payloads
+- `zstd` compression where artifacts are large enough to justify it
+
+### 9.2 Compatibility Classes
+
+The system must label reuse explicitly:
+
+- `A: exact cache hit`
+  - same semantic config and same versioned solver/tree/artifact contract
+
+- `B: resume or refine`
+  - same config hash and same artifact lineage, typically for checkpoint resume or stricter stopping criteria
+
+- `C: compatible warm start`
+  - same root state and tree identity with documented safe reuse rules
+  - v1 may implement this conservatively or defer it until after the first end-to-end slice
+
+- `D: incompatible`
+  - solve from scratch
+
+Subtree-local partial re-solve is not a v1 commitment.
+
+### 9.3 Versioning Rules
+
+Every persisted structure must carry explicit versioning:
+- config schema version
+- tree template version
+- solver-core version
+- artifact format version
+
+Never silently migrate or silently reuse incompatible artifacts.
+
+## 10. Backend-to-Frontend Contract
+
+The backend owns:
+- config validation and canonicalization
+- tree generation
+- compatibility decisions
+- artifact loading rules
+- progress and result payloads
+
+The frontend owns:
+- editing workflows
+- layout state
+- current selections
+- filters and visualization state
+
+The minimal command surface is:
+- `validate_config`
+- `start_solve`
+- `cancel_solve`
+- `resume_solve`
+- `list_artifacts`
+- `load_result`
+- `save_scenario`
+- `load_scenario`
+
+The minimal event surface is:
+- `job_queued`
+- `job_started`
+- `job_progress`
+- `job_checkpointed`
+- `job_completed`
+- `job_failed`
+- `artifact_reused`
+
+## 11. Validation and Performance Gates
+
+### 11.1 Correctness Gates
+
+Before trusting poker-specific results:
+- evaluator correctness tests must pass on exhaustive or fixture-driven hand classes
+- `SolveConfig` hashing must be stable across regression fixtures
+- Kuhn Poker validation must converge within documented tolerance
+- Leduc or equivalent toy-game validation must converge within documented tolerance
+- first poker regression scenarios must reproduce stable strategy and EV summaries within documented tolerances
+
+### 11.2 Reference Hardware
+
+Reference planning target:
+- recent 8-core desktop or laptop CPU
+- 32 GB RAM
+- NVMe SSD
+- no GPU requirement
+
+### 11.3 Latency and Resource Targets
+
+These are planning targets for v1:
+- pure UI interactions: under `100 ms`
+- artifact reopen on an exact hit: under `1 s`
+- first progress update after solve start: under `5 s`
+- baseline flop-rooted SRP solve writes its first checkpoint within `60 s`
+- baseline flop-rooted SRP solve produces a usable artifact within `10 min`
+- baseline v1 solve memory stays under `8 GB`
+
+These targets may be revised only by updating this file and `PLAN.md` together.
+
+## 12. Expected Evolution Path
+
+The intended expansion order is:
+
+1. ship a correct heads-up postflop cash-game workstation
+2. add stronger artifact reuse and study ergonomics around that slice
+3. add tournament push-fold and ICM as a separate product phase
+4. revisit wider postflop coverage, preflop solving, and multiway only after earlier phases are stable
+
+Future phases must not weaken the clarity of the v1 contract.
+
+## 13. Operational Rules
+
+The repository must follow these rules:
 - architecture changes require an update to `architecture.md`
-- task status changes require an update to `PLAN.md`
-- implementation should match documented crate boundaries
-- incompatible persistence changes must increment versioning metadata
-- correctness validation should precede optimization work
-
-## 15. Expected Evolution Path
-
-The expected system evolution is:
-
-1. establish repository standards and scaffolding
-2. ship a correct restricted-game solver
-3. add a usable desktop workflow around it
-4. make customization fast via caching and reuse
-5. broaden game support only after the above is stable
-
-This ordering is intentional. The system should become more capable without losing correctness, explainability, or architectural clarity.
+- execution-state changes require an update to `PLAN.md`
+- unsupported formats remain out of scope by default
+- correctness validation precedes optimization work
+- persistence compatibility changes require version bumps and documented invalidation behavior

@@ -1,74 +1,100 @@
 # AGENTS.md
 
-This file defines the operating rules for contributors and coding agents working in this repository.
+This file defines the operating contract for contributors and coding agents working in this repository.
+
+## Repository Objective
+
+Pokie is building a local-first GTO workstation for typical casino poker study.
+
+Committed v1 scope:
+- heads-up no-limit Texas Hold'em
+- cash-game semantics only
+- postflop solving from the start of the flop, turn, or river
+- common single-raised-pot and 3-bet-pot study spots
+
+If a game format or workflow is not listed as supported in `architecture.md`, treat it as out of scope.
 
 ## Source of Truth
 
-- `architecture.md` is the source of truth for repository architecture, component boundaries, algorithm choices, and system design.
-- `PLAN.md` is the source of truth for execution state: what is done, what is in progress, what is blocked, and what remains to be built.
-- If code, plans, and documentation diverge, update `architecture.md` and `PLAN.md` in the same change set that resolves the divergence.
+- `architecture.md` is the source of truth for product scope, architecture, crate boundaries, solver strategy, and data contracts.
+- `PLAN.md` is the source of truth for task status, dependencies, blockers, and acceptance criteria.
+- Code is the source of truth for implementation only after the docs above are aligned with it.
 
-## Required Read Order
+If code, architecture, and plan diverge, fix the docs and implementation in the same change set.
 
-Before making substantial changes:
+## Mandatory Read Order
 
-1. read `architecture.md`
-2. read the relevant sections of `PLAN.md`
-3. check whether the intended change affects architecture, task status, or both
+Before making any substantial change:
 
-## Documentation Rules
+1. read the repository objective and committed v1 scope in `architecture.md`
+2. read the relevant sections and task IDs in `PLAN.md`
+3. inspect the affected code paths
+4. decide whether the work changes architecture, execution state, or both
+5. only then implement
 
-- Do not treat `architecture.md` as optional background context. It is the design contract for the repo.
-- Do not mark a task as `done` in `PLAN.md` unless the implementation and acceptance criteria actually match.
-- When introducing a new subsystem, add it to both `architecture.md` and `PLAN.md`.
-- When changing a subsystem boundary, algorithm, persistence format, or frontend-backend contract, update `architecture.md`.
-- When completing, blocking, re-scoping, or adding work, update `PLAN.md`.
+Do not code around an unresolved product decision. Resolve it in `architecture.md` and `PLAN.md` first.
 
-## Component Practices
+## Scope Rules
 
-### Backend and Solver
+- Do not silently widen v1 beyond the documented scope.
+- Do not treat future-phase notes as permission to implement them now.
+- If a task touches preflop solving, multiway postflop, tournament ICM, push-fold charts, PLO, exploitative population models, or partial re-solve, treat it as out of scope unless the docs are updated first.
+- Prefer narrowing scope explicitly over building a generic abstraction for an undocumented future format.
 
-- Keep solver code in Rust and separate it from UI and Tauri glue code.
-- Prefer explicit crate boundaries consistent with `architecture.md`.
-- Validate solver behavior on toy games before trusting poker-specific outputs.
-- Favor deterministic and versioned serialization for configs and artifacts.
-- Do not introduce aggressive cache reuse unless compatibility rules are explicit and documented.
+## Documentation Update Triggers
 
-### UI and Product Workflow
+Update `architecture.md` when changing:
+- supported game types or v1 boundaries
+- solver algorithm family or convergence policy
+- crate or subsystem boundaries
+- canonical `SolveConfig` fields or validation rules
+- artifact schemas, compatibility classes, or migration rules
+- frontend/backend contracts
 
-- The UI is a workstation for analysis, not a marketing surface.
-- Keep solver input state aligned with the canonical config model defined by the backend.
-- Build for fast iteration: edit, solve or reuse, inspect, compare.
-- Dense interactive surfaces such as range editors should prioritize performance and clarity over generic component reuse.
+Update `PLAN.md` when changing:
+- task status
+- dependencies or blockers
+- milestone ordering
+- acceptance criteria
+- deferred-work decisions
+- the real next step for execution
 
-### Persistence and Caching
+Update `AGENTS.md` when changing:
+- contributor workflow
+- decision rules
+- required read order
+- testing expectations
+- the definition of done for plan items
 
-- Version persisted formats.
-- Make cache reuse explainable.
+When scope or architecture changes, update `architecture.md` and `PLAN.md` in the same change set.
+
+## Implementation Rules
+
+- Keep solver and poker-domain logic in Rust and separate from UI and Tauri glue.
+- Keep UI solve-input state aligned with the canonical config model in `architecture.md`.
+- Version persisted formats and make cache behavior explainable.
 - Never silently reuse incompatible artifacts.
-- Treat exact hits, warm starts, and partial re-solves as distinct behaviors.
+- If implementation reveals the plan is wrong, fix the plan instead of working around it in code.
+- Prefer small, task-scoped changes mapped to a `PLAN.md` task ID.
 
-### Planning and Execution
+## Testing Expectations
 
-- Break work into component-scoped tasks with explicit exit criteria.
-- Preserve the task IDs in `PLAN.md` when updating status so history remains traceable.
-- If implementation discovers that the current plan is wrong, correct the plan rather than working around it silently.
-- Prefer updating the plan before or alongside major implementation changes, not after the fact.
+- Solver, evaluator, math, and game-state changes require automated tests.
+- Canonical serialization, hashing, compatibility logic, and migrations require regression coverage.
+- UI changes that modify solve inputs must be validated against the canonical config model.
+- Toy-game validation must pass before trusting poker-specific solver behavior.
+- Do not mark a task `done` if its required tests or validation evidence are missing.
 
-## Good Practices
+## Done Checklist
 
-- Keep changes consistent with documented architecture.
-- Make tradeoffs explicit when deviating from the current design.
-- Prefer small, reviewable increments over broad undocumented rewrites.
-- Keep naming, folder structure, and API boundaries coherent across the repo.
-- Add or update tests when changing core logic, solver behavior, config canonicalization, or persistence behavior.
-
-## When to Update Which File
-
-- Update `architecture.md` when the system design changes.
-- Update `PLAN.md` when execution status, priorities, or acceptance criteria change.
-- Update both when a completed change also changes architecture.
+A `PLAN.md` item can move to `done` only when:
+- the implementation exists
+- the stated acceptance criteria are met
+- required tests or validation exist and pass
+- documentation still matches behavior
+- any format, contract, or workflow change is documented
+- newly discovered blockers or follow-on work are reflected in `PLAN.md`
 
 ## Default Expectation
 
-Contributors should leave the repository in a more documented and more internally consistent state than they found it.
+Leave the repository more explicit, more internally consistent, and easier for the next agent to execute without guessing.

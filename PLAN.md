@@ -3,11 +3,11 @@
 This file is the execution tracker for the repository.
 
 Use it to track:
-- what has already been completed
-- what is currently in progress
-- what still needs to be built
-- the acceptance criteria for each major component
-- the dependencies between tasks
+- what scope is locked
+- what is done
+- what is next
+- what is blocked
+- what is explicitly deferred
 
 Status values:
 - `done`
@@ -15,174 +15,182 @@ Status values:
 - `blocked`
 - `todo`
 
-## Current Focus
+`Depends On` means a task should not start until the listed tasks are complete unless this file is updated first.
 
-The current product direction is a local-first desktop poker analysis workstation with:
-- a `Rust` backend and solver core
-- a `Tauri v2` desktop shell
-- a `React + Vite + TypeScript` UI
-- a strong emphasis on fast customization through caching, warm starts, and partial re-solving
+## Product Snapshot
 
-## High-Level Milestones
+Committed v1 product:
+- local-first GTO workstation
+- heads-up `NLHE`
+- cash-game semantics only
+- postflop solving from flop-, turn-, or river-rooted states
+- common `SRP` and `3BP` study spots
 
-| Area | Goal | Status |
+Explicitly deferred beyond v1:
+- full preflop solving
+- multiway postflop
+- tournament `ICM`
+- push-fold charts
+- `PLO`
+- exploitative population models
+- subtree-grafting partial re-solve
+
+## Current Critical Path
+
+The next implementation work should follow this order:
+
+1. `REPO-01` to `REPO-05`
+2. `CORE-01` to `CORE-05`
+3. `EVAL-01` to `EVAL-03`
+4. `TREE-01` to `TREE-05`
+5. `SOLVE-01` and `QA-01`
+6. `V1-01` to `V1-05`
+7. `FAST-01` to `FAST-03`
+8. `UI-01` to `UI-06`
+
+The immediate next task is `REPO-01`.
+
+## Phase Gates
+
+| Gate | Meaning | Status |
 | --- | --- | --- |
-| Repository standards | Establish source-of-truth documentation and contribution rules | `done` |
-| Product definition | Lock v1 scope, supported game types, and performance targets | `todo` |
-| App skeleton | Create desktop shell, frontend shell, and Rust workspace | `todo` |
-| Core poker engine | Implement cards, ranges, evaluator, and scenario model | `todo` |
-| Solver engine | Implement first equilibrium solver and persistence model | `todo` |
-| Fast customization | Add caching, warm starts, and local re-solving | `todo` |
-| User workflows | Build builder, editor, queue, explorer, and compare screens | `todo` |
-| Validation | Add toy-game validation, regression suites, and performance benchmarks | `todo` |
-| Packaging | Produce a usable desktop deliverable | `todo` |
+| Gate 0 | Docs and v1 scope are locked and synchronized | `done` |
+| Gate 1 | Repo scaffolding and canonical config foundation exist | `todo` |
+| Gate 2 | Toy-game validation proves solver machinery works | `todo` |
+| Gate 3 | One poker scenario solves end to end and loads in the desktop app | `todo` |
+| Gate 4 | Full v1 workflow exists with exact cache hits and a usable explorer | `todo` |
 
 ## Task Board
 
 ### 0. Repository Governance
 
-| ID | Task | Status | Notes / Exit Criteria |
-| --- | --- | --- | --- |
-| GOV-01 | Create `architecture.md` | `done` | Repository architecture, algorithms, and rationale are documented. |
-| GOV-02 | Create `PLAN.md` | `done` | Execution tracker exists and defines status conventions. |
-| GOV-03 | Create `AGENTS.md` | `done` | Contributor instructions point to `architecture.md` as source of truth. |
-| GOV-04 | Keep docs synchronized when architecture or priorities change | `todo` | Any architectural change updates `architecture.md` and affected plan items in the same change set. |
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| GOV-01 | Create `architecture.md` | `done` | - | Repository architecture and product scope are documented. |
+| GOV-02 | Create `PLAN.md` | `done` | - | Execution tracker exists with status conventions and critical-path guidance. |
+| GOV-03 | Create `AGENTS.md` | `done` | - | Contributor instructions enforce read order, scope discipline, and doc updates. |
+| GOV-04 | Synchronize docs when scope or architecture changes | `done` | GOV-01, GOV-02, GOV-03 | `AGENTS.md`, `architecture.md`, and `PLAN.md` currently agree on v1 scope and update rules. |
 
 ### 1. Product Definition
 
-| ID | Task | Status | Notes / Exit Criteria |
-| --- | --- | --- | --- |
-| PROD-01 | Lock v1 problem scope | `todo` | Decide whether v1 is `push/fold + ICM` only or includes restricted HU postflop solving. |
-| PROD-02 | Define latency classes | `todo` | Set explicit targets for instant, interactive, fast re-solve, and full solve operations. |
-| PROD-03 | Define supported game configuration model | `todo` | Blinds, ante, stacks, payouts, rake, player count, ranges, board state, and tree template are explicitly specified. |
-| PROD-04 | Define success metrics | `todo` | Correctness, runtime, memory, artifact size, and cache hit targets are documented. |
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| PROD-01 | Lock v1 product scope | `done` | GOV-04 | V1 is explicitly documented as heads-up `NLHE` cash-game postflop solving for common `SRP` and `3BP` spots. |
+| PROD-02 | Define latency classes and reference hardware | `done` | GOV-04 | `architecture.md` contains numeric latency targets and a reference machine definition. |
+| PROD-03 | Define canonical scenario and result surface | `done` | GOV-04 | `architecture.md` documents canonical `SolveConfig` fields, result payload categories, and supported v1 outputs. |
+| PROD-04 | Define success metrics and deferred phases | `done` | GOV-04 | Validation gates, performance targets, and explicit post-v1 work are documented. |
 
-### 2. Repository and Build System
+### 2. Architecture Contracts
 
-| ID | Task | Status | Notes / Exit Criteria |
-| --- | --- | --- | --- |
-| REPO-01 | Initialize cargo workspace | `todo` | Workspace compiles with placeholder crates for each major backend concern. |
-| REPO-02 | Initialize `Tauri v2` desktop shell | `todo` | Desktop app launches and can call a trivial Rust command. |
-| REPO-03 | Initialize `React + Vite + TypeScript` frontend | `todo` | Frontend hot reload works inside the Tauri shell. |
-| REPO-04 | Add formatting, linting, and CI checks | `todo` | Rust and TypeScript checks run locally and in CI. |
-| REPO-05 | Add test harness and fixture directories | `todo` | Repository has a clear place for unit, regression, and benchmark fixtures. |
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| ARCH-01 | Document canonical `SolveConfig` | `done` | PROD-01, PROD-03 | Semantic fields, canonicalization rules, and hashing policy are documented in `architecture.md`. |
+| ARCH-02 | Document artifact manifest and compatibility classes | `done` | PROD-03 | Exact-hit, resume, warm-start, and incompatible cases are defined. |
+| ARCH-03 | Document repository layout and crate boundaries | `done` | PROD-01 | Backend responsibilities are assigned to named crates with clear exclusions. |
+| ARCH-04 | Document minimal backend/frontend contract | `done` | PROD-03 | Command and event categories plus state-ownership rules are documented. |
+| ARCH-05 | Define named validation and benchmark fixtures | `todo` | ARCH-01, ARCH-02 | Baseline toy-game and poker fixtures are named and documented in-repo for future regression and benchmark work. |
 
-### 3. Backend Domain Model
+### 3. Repository and Build System
 
-| ID | Task | Status | Notes / Exit Criteria |
-| --- | --- | --- | --- |
-| CORE-01 | Implement card encoding and deck utilities | `todo` | Deterministic card representation supports fast masking and comparisons. |
-| CORE-02 | Implement range representation and parsing | `todo` | Weighted combos, presets, and import/export are supported. |
-| CORE-03 | Implement board-state model | `todo` | Street, public cards, dead cards, and blockers are modeled correctly. |
-| CORE-04 | Implement scenario config schema | `todo` | All UI-defined solve inputs serialize into a stable config object. |
-| CORE-05 | Implement canonical hashing for configs | `todo` | Equivalent configs hash identically and become cache keys. |
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| REPO-01 | Initialize Rust workspace | `todo` | ARCH-03 | Cargo workspace exists with placeholder crates matching `architecture.md`, and `cargo check --workspace` passes. |
+| REPO-02 | Initialize `Tauri v2` desktop shell | `todo` | REPO-01 | Desktop app launches and can call a trivial Rust command through `app-api`. |
+| REPO-03 | Initialize `React + Vite + TypeScript` frontend | `todo` | REPO-01 | Frontend builds, hot reload works, and the app renders inside Tauri. |
+| REPO-04 | Add formatting, linting, test runners, and CI | `todo` | REPO-01, REPO-02, REPO-03 | Rust and TypeScript checks run locally and in CI. |
+| REPO-05 | Add fixture, regression, and benchmark directories | `todo` | REPO-01 | Repository contains stable locations for fixtures, regressions, and benchmarks, with seed manifests checked in. |
 
-### 4. Evaluation and Equity
+### 4. Backend Domain Model
 
-| ID | Task | Status | Notes / Exit Criteria |
-| --- | --- | --- | --- |
-| EQ-01 | Implement hand evaluator | `todo` | Showdown ranking is correct for all valid hand classes. |
-| EQ-02 | Implement all-in equity engine | `todo` | Exhaustive or sampled equity is deterministic for fixed seeds and settings. |
-| EQ-03 | Add precomputed indexing tables where justified | `todo` | Expensive repeated lookups are moved to indexed tables or caches. |
-| EQ-04 | Add evaluator correctness tests | `todo` | Tests cover edge cases, ties, blockers, and invalid inputs. |
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| CORE-01 | Implement card encoding and deck utilities | `todo` | REPO-01 | Deterministic card representation supports masking, ordering, and parsing with tests. |
+| CORE-02 | Implement range representation and parsing | `todo` | REPO-01, CORE-01 | Weighted combos, normalization, and import/export work with regression tests. |
+| CORE-03 | Implement v1 public-state model | `todo` | REPO-01, CORE-01 | Street-rooted postflop state, stacks, pot, board, actor, blinds, and rake are modeled correctly. |
+| CORE-04 | Implement scenario config validation | `todo` | ARCH-01, REPO-01, CORE-02, CORE-03 | Invalid v1 scenarios are rejected with explicit errors, and supported scenarios canonicalize into `SolveConfig`. |
+| CORE-05 | Implement canonical serialization and hashing | `todo` | CORE-04 | Equivalent configs hash identically, fixtures prove stability, and non-semantic metadata does not affect hashes. |
 
-### 5. Tree Construction
+### 5. Evaluation and Equity
 
-| ID | Task | Status | Notes / Exit Criteria |
-| --- | --- | --- | --- |
-| TREE-01 | Model public game state transitions | `todo` | Betting rounds, stack changes, pot updates, and terminal states are correct. |
-| TREE-02 | Model information sets | `todo` | Private information is grouped correctly for imperfect-information solving. |
-| TREE-03 | Implement restricted action abstraction | `todo` | Supported bet sizes and tree templates can be generated from config. |
-| TREE-04 | Add node-lock representation | `todo` | Forced frequencies and constraints can be expressed and validated. |
-| TREE-05 | Add tree validation | `todo` | Illegal trees, impossible actions, and invalid stacks are rejected before solve. |
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| EVAL-01 | Implement hand evaluator | `todo` | REPO-01, CORE-01 | Showdown ranking is correct for all valid hand classes used by `NLHE`. |
+| EVAL-02 | Implement deterministic equity engine | `todo` | EVAL-01, CORE-02, CORE-03 | Heads-up all-in equity is reproducible for fixed inputs and test fixtures. |
+| EVAL-03 | Add evaluator correctness tests | `todo` | EVAL-01, EVAL-02 | Tests cover ties, blockers, board edge cases, and invalid inputs. |
+| EVAL-04 | Add lookup tables only where benchmarks justify them | `todo` | EVAL-03 | Any precomputed tables have benchmark evidence and documented tradeoffs. |
 
-### 6. Solver Engine
+### 6. Tree Construction
 
-| ID | Task | Status | Notes / Exit Criteria |
-| --- | --- | --- | --- |
-| SOLVE-01 | Implement toy-game solver support first | `todo` | Kuhn and Leduc or comparable toy games can be solved for validation. |
-| SOLVE-02 | Implement first poker solver loop | `todo` | Initial `CFR`, `CFR+`, or `DCFR` loop runs against the chosen v1 game class. |
-| SOLVE-03 | Track average strategy and regrets | `todo` | Strategy persistence supports resumed solving and analysis. |
-| SOLVE-04 | Add convergence metrics | `todo` | Exploitability proxy or equivalent stopping metrics are visible. |
-| SOLVE-05 | Add checkpointing | `todo` | Long solves can be resumed without restarting from zero. |
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| TREE-01 | Model v1 public-state transitions | `todo` | CORE-03 | Street progression, stack updates, pot updates, and terminal states are correct for v1 trees. |
+| TREE-02 | Model information sets | `todo` | TREE-01 | Heads-up imperfect-information mapping is correct and covered by tests. |
+| TREE-03 | Implement versioned action templates | `todo` | ARCH-01, TREE-01 | Supported v1 `SRP` and `3BP` templates generate only legal discrete actions. |
+| TREE-04 | Add node-lock representation and validation | `todo` | TREE-03 | Supported node locks serialize canonically and reject invalid frequency payloads. |
+| TREE-05 | Add tree validation and identity rules | `todo` | TREE-02, TREE-03, TREE-04 | Illegal trees are rejected, and tree identity is stable enough for cache compatibility decisions. |
 
-### 7. Fast Customization
+### 7. Solver Engine
 
-| ID | Task | Status | Notes / Exit Criteria |
-| --- | --- | --- | --- |
-| FAST-01 | Build solve artifact store | `todo` | Strategies, regrets, metadata, and diagnostics persist locally. |
-| FAST-02 | Add exact cache reuse | `todo` | Identical config requests load existing artifacts immediately. |
-| FAST-03 | Add warm-start compatibility matching | `todo` | Nearby configs can reuse prior strategy/regret state safely. |
-| FAST-04 | Add partial re-solve support | `todo` | Local node changes do not require rebuilding the full solve when avoidable. |
-| FAST-05 | Stream partial results to the UI | `todo` | Users can inspect early outputs before full convergence. |
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| SOLVE-01 | Implement toy-game solver support first | `todo` | REPO-01 | Kuhn and Leduc or equivalent toy games solve through the same core regret/strategy machinery intended for poker. |
+| SOLVE-02 | Implement first poker solver loop | `todo` | SOLVE-01, TREE-05, EVAL-03, CORE-05 | The chosen production algorithm runs against one supported v1 poker tree and produces strategy output. |
+| SOLVE-03 | Track average strategy and regrets | `todo` | SOLVE-02 | Average strategy and regret state persist in a versioned in-memory model suitable for checkpointing. |
+| SOLVE-04 | Add convergence metrics | `todo` | SOLVE-02 | Best-response or equivalent convergence diagnostics are recorded and queryable. |
+| SOLVE-05 | Add checkpointing | `todo` | SOLVE-03, SOLVE-04 | Long solves resume without restarting from zero, and checkpoint compatibility is versioned. |
 
-### 8. Frontend UX
+### 8. First Poker Vertical Slice
 
-| ID | Task | Status | Notes / Exit Criteria |
-| --- | --- | --- | --- |
-| UI-01 | Build application shell and navigation | `todo` | Split-pane desktop workflow works on common screen sizes. |
-| UI-02 | Build Scenario Builder | `todo` | Users can define all supported solve inputs through the UI. |
-| UI-03 | Build Range Editor | `todo` | Matrix editing, combo drilldown, and presets are usable and fast. |
-| UI-04 | Build Tree Builder | `todo` | Supported bet templates and node locks can be edited safely. |
-| UI-05 | Build Solve Queue | `todo` | Job status, progress, and cancellation are visible. |
-| UI-06 | Build Explorer | `todo` | Users can inspect frequencies, EV, and combo-level details. |
-| UI-07 | Build Compare view | `todo` | Users can compare two solve artifacts at node and aggregate levels. |
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| V1-01 | Solve one documented baseline poker scenario end to end | `todo` | CORE-05, EVAL-03, TREE-05, SOLVE-01 | A named flop-rooted `SRP` scenario solves from canonical config to versioned artifact. |
+| V1-02 | Persist and reload the baseline artifact | `todo` | V1-01, SOLVE-03, SOLVE-05 | Strategy, diagnostics, and lineage metadata load from disk without recomputation. |
+| V1-03 | Expose minimal desktop commands and events | `todo` | REPO-02, REPO-03, V1-02 | `validate_config`, `start_solve`, `job_progress`, and `load_result` work through the app boundary. |
+| V1-04 | Build a minimal desktop workflow for one spot | `todo` | V1-03 | User can define the baseline spot, start a solve, and inspect root strategy and EV in the app. |
+| V1-05 | Add baseline regression fixture and benchmark | `todo` | V1-01 | Named artifact fixture and benchmark numbers exist for the baseline poker scenario. |
 
-### 9. Validation and Quality
+### 9. Cache and Reuse
 
-| ID | Task | Status | Notes / Exit Criteria |
-| --- | --- | --- | --- |
-| QA-01 | Add solver validation against toy games | `todo` | Known equilibrium behavior matches acceptable tolerances. |
-| QA-02 | Add regression fixtures for poker scenarios | `todo` | Representative configurations prevent silent behavioral regressions. |
-| QA-03 | Add benchmark suite | `todo` | Runtime and memory changes are measurable across commits. |
-| QA-04 | Add crash recovery tests | `todo` | Interrupted solve jobs can recover from persisted state. |
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| FAST-01 | Build solve artifact store | `todo` | ARCH-02, REPO-01, SOLVE-05 | Strategies, regrets, metadata, and diagnostics persist locally in versioned formats. |
+| FAST-02 | Add exact cache reuse | `todo` | FAST-01, CORE-05 | Identical config requests load existing artifacts immediately and report `A: exact cache hit`. |
+| FAST-03 | Add conservative warm-start compatibility matching | `todo` | FAST-01, TREE-05, SOLVE-05 | Documented `C`-class warm starts are accepted only when compatibility rules are satisfied and visible to the user. |
+| FAST-04 | Add partial re-solve support | `blocked` | FAST-03, QA-02 | Do not start until exact-hit and warm-start behavior are stable, benchmarked, and documented as insufficient. |
+| FAST-05 | Stream partial results to the UI | `todo` | SOLVE-04, V1-03 | Users can inspect early summaries before full convergence. |
 
-### 10. Packaging and Operations
+### 10. Frontend Workflow
 
-| ID | Task | Status | Notes / Exit Criteria |
-| --- | --- | --- | --- |
-| OPS-01 | Add desktop packaging pipeline | `todo` | Windows build output can be installed and launched reliably. |
-| OPS-02 | Add versioned artifact migration strategy | `todo` | Old cached solves can be invalidated or migrated explicitly. |
-| OPS-03 | Add optional diagnostics and telemetry mode | `todo` | Performance debugging can be enabled without polluting normal workflows. |
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| UI-01 | Build application shell and navigation | `todo` | REPO-02, REPO-03 | Desktop shell supports the v1 workflow on common screen sizes. |
+| UI-02 | Build Scenario Builder | `todo` | UI-01, CORE-04 | Users can define all supported v1 solve inputs and receive validation feedback. |
+| UI-03 | Build Range Editor | `todo` | UI-02, CORE-02 | Matrix editing, combo drilldown, and range presets are usable for v1 ranges. |
+| UI-04 | Build Tree Template Editor | `todo` | UI-02, TREE-03, TREE-04 | Users can select supported templates and supported node locks without leaving v1 scope. |
+| UI-05 | Build Solve Queue | `todo` | UI-01, V1-03 | Job status, progress, cancel, and resume are visible. |
+| UI-06 | Build Explorer | `todo` | UI-01, V1-02 | Users can inspect node frequencies, EV, and combo-level strategy details. |
+| UI-07 | Build Compare view | `blocked` | UI-06, FAST-02 | Do not start until the explorer and stable artifact loading already exist. |
 
-## Component Checklists
+### 11. Quality and Packaging
 
-### Backend Components
+| ID | Task | Status | Depends On | Exit Criteria |
+| --- | --- | --- | --- | --- |
+| QA-01 | Add solver validation against toy games | `todo` | SOLVE-01 | Known equilibrium behavior matches documented tolerances before poker solves are trusted. |
+| QA-02 | Add regression fixtures for poker scenarios | `todo` | V1-05 | Representative v1 scenarios protect against silent solver and compatibility regressions. |
+| QA-03 | Add benchmark suite | `todo` | V1-05, REPO-05 | Runtime, memory, and artifact-size changes are measurable across commits. |
+| QA-04 | Add crash recovery tests | `todo` | FAST-01, SOLVE-05 | Interrupted solve jobs recover correctly from persisted checkpoint state. |
+| OPS-01 | Add desktop packaging pipeline | `todo` | UI-05, UI-06 | Windows build output can be installed and launched reliably. |
+| OPS-02 | Add versioned artifact migration and invalidation strategy | `todo` | FAST-01 | Old cached solves are invalidated or migrated explicitly, never silently reused. |
+| OPS-03 | Add optional diagnostics and telemetry mode | `blocked` | QA-03 | Do not start until benchmark coverage exists and a concrete operational need is documented. |
 
-- Keep crate boundaries narrow and explicit.
-- Avoid coupling solver code to Tauri or UI concerns.
-- Prefer deterministic serialization and stable hashes.
-- Every performance optimization must have a benchmark or rationale.
+## Explicitly Deferred Work
 
-### Solver Components
+These items are not part of the current implementation track:
+- tournament `ICM`
+- push-fold and reshove charts
+- multiway postflop solving
+- full preflop solving
+- non-`NLHE` variants
+- subtree-grafting partial re-solve as a near-term feature
 
-- Validate logic on toy games before trusting poker-specific outputs.
-- Track correctness and convergence separately from runtime.
-- Persist enough state to resume or warm-start solves safely.
-- Do not add algorithmic complexity without a measurable latency or quality benefit.
-
-### UI Components
-
-- Treat the UI as a workstation, not a marketing site.
-- Optimize for dense interaction, keyboard flow, and comparison workflows.
-- Keep expensive visualizations off the main thread where possible.
-- Any UI that changes solver input must map cleanly to the canonical config model.
-
-### Data and Persistence
-
-- Store metadata in a queryable form and large artifacts in a compact binary form.
-- Version all persisted formats.
-- Cache reuse must be explicit and explainable to the user.
-- Never silently reuse incompatible artifacts.
-
-## Change Management
-
-When a task changes status:
-- update this file in the same change set
-- keep the status and exit criteria aligned with reality
-- update `architecture.md` as well if the task changes the system design
-
-When a new major component is introduced:
-- add it to the task board
-- add acceptance criteria
-- document how it interacts with the rest of the system
+If any of these move into scope, update `architecture.md` and this file first.
