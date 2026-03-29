@@ -48,6 +48,12 @@ Run the desktop shell on a Windows workstation:
 npm run tauri:dev
 ```
 
+Run the Windows-host desktop smoke check used in this repository:
+
+```bash
+./scripts/run_desktop_e2e_smoke.sh
+```
+
 The current desktop surface is intentionally small:
 - `sample_river_request`
 - `validate_config`
@@ -59,10 +65,11 @@ It renders:
 - exploitability / NashConv
 - root infoset strategies
 
-### Cross-check used in this repository
+### Validation used in this repository
 
-The Tauri shell was compile-checked in this repo with:
+The desktop shell is validated in this repo with:
 
 ```bash
 cargo check --manifest-path desktop/src-tauri/Cargo.toml --target x86_64-pc-windows-gnu
+./scripts/run_desktop_e2e_smoke.sh
 ```

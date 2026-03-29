@@ -131,3 +131,11 @@ export async function solveRiverSpot(request: RiverSolveRequest): Promise<RiverS
     throw normalizeError(error);
   }
 }
+
+export async function writeE2eSmokeReport(report: Record<string, unknown>): Promise<void> {
+  try {
+    await invoke('write_e2e_smoke_report', { report: JSON.stringify(report) });
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}

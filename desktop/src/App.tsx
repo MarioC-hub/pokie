@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import {
   AppError,
   RiverSolveRequest,
@@ -8,6 +9,7 @@ import {
   loadSampleRequest,
   solveRiverSpot,
   validateConfig,
+  writeE2eSmokeReport,
 } from './api';
 
 const integerFields = [
@@ -40,26 +42,48 @@ function toErrorMessage(error: AppError | Error): string {
 }
 
 export default function App() {
+  const smokeEnabled = import.meta.env.VITE_POKIE_E2E === '1';
   const [request, setRequest] = useState<RiverSolveRequest>(emptyRiverSolveRequest());
   const [validation, setValidation] = useState<ValidateConfigResponse | null>(null);
   const [result, setResult] = useState<RiverSolveResponse | null>(null);
   const [busy, setBusy] = useState<BusyState>('load-sample');
   const [status, setStatus] = useState('Loading the exact river sample spot…');
   const [error, setError] = useState<string | null>(null);
+  const [smokeStarted, setSmokeStarted] = useState(false);
+  const [sampleReady, setSampleReady] = useState(false);
+
+  useEffect(() => {
+    if (smokeEnabled) {
+      void writeE2eSmokeReport({ status: 'running', stage: 'boot' });
+    }
+  }, [smokeEnabled]);
 
   useEffect(() => {
     loadSampleRequest()
       .then((sample) => {
         setRequest(sample);
         setStatus('Sample river-only spot loaded from the desktop backend.');
+        setSampleReady(true);
+        if (smokeEnabled) {
+          void writeE2eSmokeReport({ status: 'running', stage: 'sample-loaded' });
+        }
       })
       .catch((nextError) => {
         setRequest(emptyRiverSolveRequest());
+        setSampleReady(false);
         setStatus('Could not load the backend sample spot. The form is ready for manual input.');
         setError(toErrorMessage(nextError as AppError));
+        if (smokeEnabled) {
+          void setSmokeWindowTitle('Pokie E2E FAIL');
+          void writeE2eSmokeReport({
+            status: 'fail',
+            stage: 'load-sample',
+            error: toErrorMessage(nextError as AppError),
+          });
+        }
       })
       .finally(() => setBusy(null));
-  }, []);
+  }, [smokeEnabled]);
 
   const canSubmit = busy === null;
   const summaryItems = useMemo(
@@ -74,6 +98,27 @@ export default function App() {
 
   function updateField<Key extends keyof RiverSolveRequest>(key: Key, value: RiverSolveRequest[Key]) {
     setRequest((current) => ({ ...current, [key]: value }));
+  }
+
+  async function setSmokeWindowTitle(title: string) {
+    if (!smokeEnabled) {
+      return;
+    }
+    document.title = title;
+    try {
+      await getCurrentWindow().setTitle(title);
+    } catch {
+      // ignore title updates outside the Tauri shell
+    }
+  }
+
+  function applySolveResponse(solveResponse: RiverSolveResponse) {
+    setValidation({
+      configHash: solveResponse.configHash,
+      compatibleDealCount: solveResponse.compatibleDealCount,
+      normalized: solveResponse.normalized,
+    });
+    setResult(solveResponse);
   }
 
   async function handleLoadSample() {
@@ -117,12 +162,7 @@ export default function App() {
     setError(null);
     try {
       const solveResponse = await solveRiverSpot(request);
-      setValidation({
-        configHash: solveResponse.configHash,
-        compatibleDealCount: solveResponse.compatibleDealCount,
-        normalized: solveResponse.normalized,
-      });
-      setResult(solveResponse);
+      applySolveResponse(solveResponse);
       setStatus('Solve completed through the exact river backend slice.');
     } catch (nextError) {
       setResult(null);
@@ -132,6 +172,57 @@ export default function App() {
       setBusy(null);
     }
   }
+
+  useEffect(() => {
+    if (!smokeEnabled || smokeStarted || !sampleReady) {
+      return;
+    }
+
+    setSmokeStarted(true);
+    void setSmokeWindowTitle('Pokie E2E RUNNING');
+
+    async function runSmokeFlow() {
+      setBusy('validate');
+      setError(null);
+      setResult(null);
+      setStatus('Running desktop E2E smoke flow…');
+      await writeE2eSmokeReport({ status: 'running', stage: 'validate' });
+
+      try {
+        const validationResponse = await validateConfig(request);
+        setValidation(validationResponse);
+
+        setBusy('solve');
+        await writeE2eSmokeReport({ status: 'running', stage: 'solve' });
+        const solveResponse = await solveRiverSpot(request);
+        applySolveResponse(solveResponse);
+        setStatus('Desktop E2E smoke flow passed.');
+        await setSmokeWindowTitle('Pokie E2E PASS');
+        await writeE2eSmokeReport({
+          status: 'pass',
+          configHash: solveResponse.configHash,
+          treeIdentity: solveResponse.treeIdentity,
+          iterations: solveResponse.iterations,
+          nashConv: solveResponse.nashConv,
+        });
+      } catch (nextError) {
+        setValidation(null);
+        setResult(null);
+        setStatus('Desktop E2E smoke flow failed.');
+        setError(toErrorMessage(nextError as AppError));
+        await setSmokeWindowTitle('Pokie E2E FAIL');
+        await writeE2eSmokeReport({
+          status: 'fail',
+          stage: 'validate-or-solve',
+          error: toErrorMessage(nextError as AppError),
+        });
+      } finally {
+        setBusy(null);
+      }
+    }
+
+    void runSmokeFlow();
+  }, [request, sampleReady, smokeEnabled, smokeStarted]);
 
   return (
     <main className="app-shell">
