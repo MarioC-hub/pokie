@@ -336,7 +336,9 @@ fn set_actions(
     actions: Vec<RiverTreeAction>,
 ) -> Result<(), RiverTreeError> {
     match &mut nodes[node_id].kind {
-        RiverTreeNodeKind::Decision { actions: existing, .. } => {
+        RiverTreeNodeKind::Decision {
+            actions: existing, ..
+        } => {
             *existing = actions;
             Ok(())
         }
@@ -384,7 +386,10 @@ mod tests {
                     small_blind: 1,
                     big_blind: 2,
                 },
-                rake_profile: RakeProfile { rake_bps: 0, cap: 0 },
+                rake_profile: RakeProfile {
+                    rake_bps: 0,
+                    cap: 0,
+                },
             },
             ranges: RangeConfig {
                 oop_range: WeightedRange::from_hands(vec![
@@ -437,7 +442,9 @@ mod tests {
             .nodes
             .iter()
             .filter_map(|node| match node.kind {
-                RiverTreeNodeKind::Terminal { outcome } => Some((node.history_key.as_str(), outcome)),
+                RiverTreeNodeKind::Terminal { outcome } => {
+                    Some((node.history_key.as_str(), outcome))
+                }
                 _ => None,
             })
             .collect::<Vec<_>>();

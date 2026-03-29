@@ -93,7 +93,11 @@ impl StrategyProfile {
         &self.infoset_strategies[infoset]
     }
 
-    pub fn probability_by_key<'a>(&'a self, game: &'a ExtensiveGame, key: &str) -> Option<&'a [f64]> {
+    pub fn probability_by_key<'a>(
+        &'a self,
+        game: &'a ExtensiveGame,
+        key: &str,
+    ) -> Option<&'a [f64]> {
         let infoset_id = game.infoset_id(key)?;
         Some(self.probabilities(infoset_id))
     }

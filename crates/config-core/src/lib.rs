@@ -142,6 +142,7 @@ pub struct SolveConfig {
 }
 
 impl SolveConfig {
+    #[allow(clippy::too_many_arguments)]
     pub fn river_single_bet(
         board: Board,
         oop_range: WeightedRange,
@@ -166,9 +167,15 @@ impl SolveConfig {
                     small_blind: 1,
                     big_blind: 2,
                 },
-                rake_profile: RakeProfile { rake_bps: 0, cap: 0 },
+                rake_profile: RakeProfile {
+                    rake_bps: 0,
+                    cap: 0,
+                },
             },
-            ranges: RangeConfig { oop_range, ip_range },
+            ranges: RangeConfig {
+                oop_range,
+                ip_range,
+            },
             tree_template: RiverTreeTemplate::single_bet(first_bet_size, after_check_bet_size),
             node_locks: Vec::new(),
             solver_settings: SolverSettings {
@@ -192,12 +199,17 @@ impl SolveConfig {
             return Err(ConfigError::UnsupportedMode(self.game.mode));
         }
         if self.game.active_players != 2 {
-            return Err(ConfigError::UnsupportedActivePlayers(self.game.active_players));
+            return Err(ConfigError::UnsupportedActivePlayers(
+                self.game.active_players,
+            ));
         }
         if self.root_state.street != Street::River {
             return Err(ConfigError::UnsupportedStreet(self.root_state.street));
         }
-        self.root_state.board.validate_for_street(Street::River).map_err(ConfigError::InvalidBoard)?;
+        self.root_state
+            .board
+            .validate_for_street(Street::River)
+            .map_err(ConfigError::InvalidBoard)?;
         if self.root_state.pot_size == 0 {
             return Err(ConfigError::InvalidPotSize(self.root_state.pot_size));
         }
@@ -223,16 +235,24 @@ impl SolveConfig {
             });
         }
         if self.root_state.rake_profile.rake_bps != 0 || self.root_state.rake_profile.cap != 0 {
-            return Err(ConfigError::UnsupportedRakeProfile(self.root_state.rake_profile));
+            return Err(ConfigError::UnsupportedRakeProfile(
+                self.root_state.rake_profile,
+            ));
         }
         if self.tree_template.template_id != RIVER_SINGLE_BET_TEMPLATE_ID {
-            return Err(ConfigError::UnsupportedTemplateId(self.tree_template.template_id.clone()));
+            return Err(ConfigError::UnsupportedTemplateId(
+                self.tree_template.template_id.clone(),
+            ));
         }
         if self.tree_template.template_version != RIVER_SINGLE_BET_TEMPLATE_VERSION {
-            return Err(ConfigError::UnsupportedTemplateVersion(self.tree_template.template_version));
+            return Err(ConfigError::UnsupportedTemplateVersion(
+                self.tree_template.template_version,
+            ));
         }
         if self.tree_template.max_raises_per_street != 0 {
-            return Err(ConfigError::UnsupportedRaises(self.tree_template.max_raises_per_street));
+            return Err(ConfigError::UnsupportedRaises(
+                self.tree_template.max_raises_per_street,
+            ));
         }
         if self.tree_template.allow_all_in {
             return Err(ConfigError::UnsupportedAllIn);
@@ -243,7 +263,10 @@ impl SolveConfig {
         let effective_stack = self.root_state.effective_stack();
         for (label, size) in [
             ("first_bet_size", self.tree_template.first_bet_size),
-            ("after_check_bet_size", self.tree_template.after_check_bet_size),
+            (
+                "after_check_bet_size",
+                self.tree_template.after_check_bet_size,
+            ),
         ] {
             if size > effective_stack {
                 return Err(ConfigError::InvalidBetSize {
@@ -319,29 +342,67 @@ impl SolveConfig {
         lines.push(format!("oop_stack={}", self.root_state.oop_stack));
         lines.push(format!("ip_stack={}", self.root_state.ip_stack));
         lines.push(format!("pot_size={}", self.root_state.pot_size));
-        lines.push(format!("small_blind={}", self.root_state.blind_profile.small_blind));
-        lines.push(format!("big_blind={}", self.root_state.blind_profile.big_blind));
-        lines.push(format!("rake_bps={}", self.root_state.rake_profile.rake_bps));
+        lines.push(format!(
+            "small_blind={}",
+            self.root_state.blind_profile.small_blind
+        ));
+        lines.push(format!(
+            "big_blind={}",
+            self.root_state.blind_profile.big_blind
+        ));
+        lines.push(format!(
+            "rake_bps={}",
+            self.root_state.rake_profile.rake_bps
+        ));
         lines.push(format!("rake_cap={}", self.root_state.rake_profile.cap));
-        lines.push(format!("oop_range={}", self.ranges.oop_range.canonical_string()));
-        lines.push(format!("ip_range={}", self.ranges.ip_range.canonical_string()));
+        lines.push(format!(
+            "oop_range={}",
+            self.ranges.oop_range.canonical_string()
+        ));
+        lines.push(format!(
+            "ip_range={}",
+            self.ranges.ip_range.canonical_string()
+        ));
         lines.push(format!("template_id={}", self.tree_template.template_id));
-        lines.push(format!("template_version={}", self.tree_template.template_version));
-        lines.push(format!("first_bet_size={}", self.tree_template.first_bet_size));
-        lines.push(format!("after_check_bet_size={}", self.tree_template.after_check_bet_size));
-        lines.push(format!("max_raises_per_street={}", self.tree_template.max_raises_per_street));
+        lines.push(format!(
+            "template_version={}",
+            self.tree_template.template_version
+        ));
+        lines.push(format!(
+            "first_bet_size={}",
+            self.tree_template.first_bet_size
+        ));
+        lines.push(format!(
+            "after_check_bet_size={}",
+            self.tree_template.after_check_bet_size
+        ));
+        lines.push(format!(
+            "max_raises_per_street={}",
+            self.tree_template.max_raises_per_street
+        ));
         lines.push(format!("allow_all_in={}", self.tree_template.allow_all_in));
         lines.push(format!("algorithm={:?}", self.solver_settings.algorithm));
         lines.push(format!("iterations={}", self.solver_settings.iterations));
-        lines.push(format!("checkpoint_cadence={}", self.solver_settings.checkpoint_cadence));
-        lines.push(format!("thread_count={}", self.solver_settings.thread_count));
-        lines.push(format!("deterministic_seed={}", self.solver_settings.deterministic_seed));
+        lines.push(format!(
+            "checkpoint_cadence={}",
+            self.solver_settings.checkpoint_cadence
+        ));
+        lines.push(format!(
+            "thread_count={}",
+            self.solver_settings.thread_count
+        ));
+        lines.push(format!(
+            "deterministic_seed={}",
+            self.solver_settings.deterministic_seed
+        ));
         lines.join("\n")
     }
 
     pub fn canonical_hash(&self) -> ConfigResult<String> {
         self.validate()?;
-        Ok(hex_string(&canonical_hash_bytes(self.canonical_string().as_bytes())))
+        Ok(hex_string(&canonical_hash_bytes(
+            self.canonical_string().as_bytes(),
+        )))
     }
 
     pub fn stable_hash(&self) -> ConfigResult<String> {
@@ -362,10 +423,19 @@ pub enum ConfigError {
     UnsupportedStreet(Street),
     InvalidBoard(poker_core::PokerError),
     InvalidPotSize(u32),
-    InvalidStack { role: PlayerRole, stack: u32 },
-    InvalidBlindProfile { small_blind: u32, big_blind: u32 },
+    InvalidStack {
+        role: PlayerRole,
+        stack: u32,
+    },
+    InvalidBlindProfile {
+        small_blind: u32,
+        big_blind: u32,
+    },
     UnsupportedRakeProfile(RakeProfile),
-    InvalidRange { role: PlayerRole, source: RangeError },
+    InvalidRange {
+        role: PlayerRole,
+        source: RangeError,
+    },
     UnsupportedTemplateId(String),
     UnsupportedTemplateVersion(u32),
     NoActionsAvailable,
@@ -383,10 +453,14 @@ pub enum ConfigError {
 impl fmt::Display for ConfigError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::UnsupportedSchemaVersion(version) => write!(f, "unsupported schema version {version}"),
+            Self::UnsupportedSchemaVersion(version) => {
+                write!(f, "unsupported schema version {version}")
+            }
             Self::UnsupportedVariant(variant) => write!(f, "unsupported variant {variant:?}"),
             Self::UnsupportedMode(mode) => write!(f, "unsupported game mode {mode:?}"),
-            Self::UnsupportedActivePlayers(players) => write!(f, "unsupported active player count {players}"),
+            Self::UnsupportedActivePlayers(players) => {
+                write!(f, "unsupported active player count {players}")
+            }
             Self::UnsupportedStreet(street) => write!(f, "unsupported root street {street}"),
             Self::InvalidBoard(source) => write!(f, "invalid board: {source}"),
             Self::InvalidPotSize(size) => write!(f, "invalid pot size {size}"),
@@ -396,7 +470,11 @@ impl fmt::Display for ConfigError {
                 big_blind,
             } => write!(f, "invalid blind profile {small_blind}/{big_blind}"),
             Self::UnsupportedRakeProfile(profile) => {
-                write!(f, "rake is not implemented yet (rake_bps={}, cap={})", profile.rake_bps, profile.cap)
+                write!(
+                    f,
+                    "rake is not implemented yet (rake_bps={}, cap={})",
+                    profile.rake_bps, profile.cap
+                )
             }
             Self::InvalidRange { role, source } => write!(f, "invalid {role} range: {source}"),
             Self::UnsupportedTemplateId(id) => write!(f, "unsupported tree template id {id}"),
@@ -408,10 +486,20 @@ impl fmt::Display for ConfigError {
                 label,
                 size,
                 effective_stack,
-            } => write!(f, "{label} {size} exceeds effective stack {effective_stack}"),
-            Self::UnsupportedRaises(raises) => write!(f, "raises are unsupported in the current slice (got {raises})"),
-            Self::UnsupportedAllIn => write!(f, "all-in templates are unsupported in the current slice"),
-            Self::UnsupportedNodeLocks => write!(f, "node locks are unsupported in the current slice"),
+            } => write!(
+                f,
+                "{label} {size} exceeds effective stack {effective_stack}"
+            ),
+            Self::UnsupportedRaises(raises) => write!(
+                f,
+                "raises are unsupported in the current slice (got {raises})"
+            ),
+            Self::UnsupportedAllIn => {
+                write!(f, "all-in templates are unsupported in the current slice")
+            }
+            Self::UnsupportedNodeLocks => {
+                write!(f, "node locks are unsupported in the current slice")
+            }
             Self::InvalidSolverSettings(message) => write!(f, "invalid solver settings: {message}"),
         }
     }
@@ -445,9 +533,9 @@ mod tests {
     use range_core::WeightedRange;
 
     use super::{
-        AlgorithmFamily, BlindProfile, ConfigError, PlayerRole, RakeProfile, RangeConfig,
-        RiverTreeTemplate, RootState, SolveConfig, SolverSettings, Street, CURRENT_SCHEMA_VERSION,
-        GameConfig, GameMode, Variant, RIVER_SINGLE_BET_TEMPLATE_ID,
+        AlgorithmFamily, BlindProfile, ConfigError, GameConfig, GameMode, PlayerRole, RakeProfile,
+        RangeConfig, RiverTreeTemplate, RootState, SolveConfig, SolverSettings, Street, Variant,
+        CURRENT_SCHEMA_VERSION, RIVER_SINGLE_BET_TEMPLATE_ID,
     };
 
     fn base_config() -> SolveConfig {
@@ -469,7 +557,10 @@ mod tests {
                     small_blind: 1,
                     big_blind: 2,
                 },
-                rake_profile: RakeProfile { rake_bps: 0, cap: 0 },
+                rake_profile: RakeProfile {
+                    rake_bps: 0,
+                    cap: 0,
+                },
             },
             ranges: RangeConfig {
                 oop_range: WeightedRange::from_hands(vec![
@@ -477,7 +568,11 @@ mod tests {
                     (HoleCards::from_str("3c4c").unwrap(), 1.0),
                 ])
                 .unwrap(),
-                ip_range: WeightedRange::from_hands(vec![(HoleCards::from_str("KdQd").unwrap(), 1.0)]).unwrap(),
+                ip_range: WeightedRange::from_hands(vec![(
+                    HoleCards::from_str("KdQd").unwrap(),
+                    1.0,
+                )])
+                .unwrap(),
             },
             tree_template: RiverTreeTemplate {
                 template_id: RIVER_SINGLE_BET_TEMPLATE_ID.to_string(),
@@ -508,7 +603,10 @@ mod tests {
         ])
         .unwrap();
 
-        assert_eq!(left.canonical_hash().unwrap(), right.canonical_hash().unwrap());
+        assert_eq!(
+            left.canonical_hash().unwrap(),
+            right.canonical_hash().unwrap()
+        );
         left.validate().unwrap();
     }
 
@@ -516,16 +614,25 @@ mod tests {
     fn rejects_non_river_roots_exactly() {
         let mut config = base_config();
         config.root_state.street = Street::Turn;
-        assert!(matches!(config.validate(), Err(ConfigError::UnsupportedStreet(Street::Turn))));
+        assert!(matches!(
+            config.validate(),
+            Err(ConfigError::UnsupportedStreet(Street::Turn))
+        ));
     }
 
     #[test]
     fn rejects_nonzero_rake_until_implemented() {
         let mut config = base_config();
-        config.root_state.rake_profile = RakeProfile { rake_bps: 500, cap: 3 };
+        config.root_state.rake_profile = RakeProfile {
+            rake_bps: 500,
+            cap: 3,
+        };
         assert!(matches!(
             config.validate(),
-            Err(ConfigError::UnsupportedRakeProfile(RakeProfile { rake_bps: 500, cap: 3 }))
+            Err(ConfigError::UnsupportedRakeProfile(RakeProfile {
+                rake_bps: 500,
+                cap: 3
+            }))
         ));
     }
 

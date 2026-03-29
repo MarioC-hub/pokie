@@ -27,13 +27,46 @@ The current suite covers:
 - exact river poker equilibrium and exploitability checks on a bounded polarized fixture
 - exact first-iteration CFR regression for the river poker slice
 
+## Repository checks
+
+Install the Rust components and targets used by the local runners:
+
+```bash
+rustup component add rustfmt clippy
+rustup target add x86_64-unknown-linux-musl x86_64-pc-windows-gnu
+```
+
+Run the Rust formatter, lints, workspace tests, and the named conformance runner:
+
+```bash
+./scripts/run_rust_checks.sh
+```
+
+Run the frontend formatter, lints, and production build:
+
+```bash
+./scripts/run_frontend_checks.sh
+```
+
+Run the Tauri shell formatting and Windows-target compile check:
+
+```bash
+./scripts/run_desktop_shell_checks.sh
+```
+
+Run the full local check suite used by this repository:
+
+```bash
+./scripts/run_repo_checks.sh
+```
+
 ## Desktop shell
 
 Install frontend dependencies from `desktop/`:
 
 ```bash
 cd desktop
-npm install
+npm ci
 ```
 
 Build the React frontend:
@@ -67,9 +100,16 @@ It renders:
 
 ### Validation used in this repository
 
-The desktop shell is validated in this repo with:
+The repository CI mirrors the local runners with:
 
 ```bash
-cargo check --manifest-path desktop/src-tauri/Cargo.toml --target x86_64-pc-windows-gnu
+./scripts/run_rust_checks.sh
+./scripts/run_frontend_checks.sh
+./scripts/run_desktop_shell_checks.sh
+```
+
+For the current exact river desktop slice, the Windows-host smoke validation remains:
+
+```bash
 ./scripts/run_desktop_e2e_smoke.sh
 ```

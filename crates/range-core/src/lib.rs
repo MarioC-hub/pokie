@@ -248,7 +248,6 @@ impl FromStr for WeightedRange {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let entries = split_tokens(s)
-            .into_iter()
             .map(parse_entry)
             .collect::<Result<Vec<_>, _>>()?;
         Self::new(entries)
@@ -332,9 +331,10 @@ fn parse_entry(text: &str) -> Result<WeightedEntry, RangeError> {
         (token, None)
     };
 
-    let hole_cards = HoleCards::from_str(cards_text).map_err(|_| RangeError::InvalidComboSyntax {
-        token: token.to_string(),
-    })?;
+    let hole_cards =
+        HoleCards::from_str(cards_text).map_err(|_| RangeError::InvalidComboSyntax {
+            token: token.to_string(),
+        })?;
 
     let weight = match weight_text {
         Some(text) => text
@@ -356,7 +356,9 @@ fn canonicalize_entries(entries: Vec<WeightedEntry>) -> Result<WeightedRange, Ra
     let mut ordered = Vec::with_capacity(entries.len());
     for entry in entries {
         if !entry.weight.is_finite() || entry.weight <= 0.0 {
-            return Err(RangeError::InvalidWeight { weight: entry.weight });
+            return Err(RangeError::InvalidWeight {
+                weight: entry.weight,
+            });
         }
         ordered.push(entry);
     }
@@ -414,7 +416,10 @@ mod tests {
         assert_eq!(range.len(), 2);
         assert_eq!(range.canonical_string(), "KhAh:0.2,KsAs:0.8");
         assert_close(range.total_weight(), 1.0, 1e-12);
-        assert_eq!(range.weight_of(&HoleCards::from_str("AsKs").unwrap()), Some(0.8));
+        assert_eq!(
+            range.weight_of(&HoleCards::from_str("AsKs").unwrap()),
+            Some(0.8)
+        );
         assert_eq!(range.entries()[0].hand, range.entries()[0].hole_cards);
     }
 
@@ -430,11 +435,17 @@ mod tests {
     fn overlap_filtering_is_exact() {
         let board = Board::from_str("As Kd Qh Jc Ts").unwrap();
         let range = WeightedRange::parse_exact("AsKs:2,QhJh:1,9c8c:1").unwrap();
-        assert_eq!(range.first_board_overlap(&board), Some(Card::from_str("Qh").unwrap()));
-        assert_eq!(range.validate_against_board(&board).unwrap_err(), RangeError::BoardConflict {
-            hand: "JhQh".to_string(),
-            card: Card::from_str("Qh").unwrap(),
-        });
+        assert_eq!(
+            range.first_board_overlap(&board),
+            Some(Card::from_str("Qh").unwrap())
+        );
+        assert_eq!(
+            range.validate_against_board(&board).unwrap_err(),
+            RangeError::BoardConflict {
+                hand: "JhQh".to_string(),
+                card: Card::from_str("Qh").unwrap(),
+            }
+        );
 
         let filtered = range.remove_board_blocked_combos(&board).unwrap();
         assert_eq!(filtered.canonical_string(), "8c9c:1");

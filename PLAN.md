@@ -49,7 +49,7 @@ The next implementation work should follow this order:
 8. `FAST-01` to `FAST-03`
 9. `UI-01` to `UI-06`
 
-The immediate next task is `REPO-04`.
+The immediate next task is `CORE-03`.
 
 ## Phase Gates
 
@@ -98,7 +98,7 @@ The immediate next task is `REPO-04`.
 | REPO-01 | Initialize Rust workspace | `done` | ARCH-03 | Cargo workspace exists with placeholder crates matching `architecture.md`, and `cargo check --workspace` passes. |
 | REPO-02 | Initialize `Tauri v2` desktop shell | `done` | REPO-01 | Tauri shell files, the thin `app-api` command bridge, and a Windows-host desktop smoke launch check now exist for the exact river slice. |
 | REPO-03 | Initialize `React + Vite + TypeScript` frontend | `done` | REPO-01 | React/Vite/TypeScript frontend builds, is wired to Tauri, and now passes a live Windows-host smoke run inside the desktop shell. |
-| REPO-04 | Add formatting, linting, test runners, and CI | `todo` | REPO-01, REPO-02, REPO-03 | Rust and TypeScript checks run locally and in CI. |
+| REPO-04 | Add formatting, linting, test runners, and CI | `done` | REPO-01, REPO-02, REPO-03 | Local runner scripts now cover Rust fmt/clippy/tests/conformance plus desktop format/lint/build/shell checks, and GitHub Actions CI mirrors those checks on Linux and Windows. |
 | REPO-05 | Add fixture, regression, and benchmark directories | `done` | REPO-01 | Repository contains stable locations for fixtures, regressions, and benchmarks, with seed manifests checked in. |
 
 ### 3.5 Staged Backend Slice

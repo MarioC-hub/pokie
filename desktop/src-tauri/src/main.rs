@@ -2,8 +2,8 @@
 
 mod commands;
 
-use commands::{sample_river_request, solve_river_spot, validate_config};
 use commands::write_e2e_smoke_report;
+use commands::{sample_river_request, solve_river_spot, validate_config};
 
 fn main() {
     tauri::Builder::default()

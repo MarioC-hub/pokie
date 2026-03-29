@@ -51,7 +51,9 @@ impl CfrState {
             .infosets()
             .iter()
             .enumerate()
-            .map(|(infoset_id, infoset)| regret_matching(&self.regrets[infoset_id], infoset.action_labels.len()))
+            .map(|(infoset_id, infoset)| {
+                regret_matching(&self.regrets[infoset_id], infoset.action_labels.len())
+            })
             .collect();
         StrategyProfile::new(infoset_strategies)
     }
@@ -69,9 +71,9 @@ impl CfrState {
                 } else {
                     normalize_probabilities(
                         self.average_numerators[infoset_id]
-                        .iter()
-                        .map(|value| value / denominator)
-                        .collect(),
+                            .iter()
+                            .map(|value| value / denominator)
+                            .collect(),
                     )
                 }
             })
@@ -79,7 +81,11 @@ impl CfrState {
         StrategyProfile::new(infoset_strategies)
     }
 
-    pub fn regret_row_by_key<'a>(&'a self, game: &'a ExtensiveGame, key: &str) -> Option<&'a [f64]> {
+    pub fn regret_row_by_key<'a>(
+        &'a self,
+        game: &'a ExtensiveGame,
+        key: &str,
+    ) -> Option<&'a [f64]> {
         let infoset_id = game.infoset_id(key)?;
         Some(&self.regrets[infoset_id])
     }
@@ -113,13 +119,13 @@ impl CfrState {
         );
 
         for infoset in game.player_infosets(Player::P0) {
-            for action_index in 0..self.regrets[infoset].len() {
-                self.regrets[infoset][action_index] += deltas_p0[infoset][action_index];
+            for (regret, delta) in self.regrets[infoset].iter_mut().zip(&deltas_p0[infoset]) {
+                *regret += *delta;
             }
         }
         for infoset in game.player_infosets(Player::P1) {
-            for action_index in 0..self.regrets[infoset].len() {
-                self.regrets[infoset][action_index] += deltas_p1[infoset][action_index];
+            for (regret, delta) in self.regrets[infoset].iter_mut().zip(&deltas_p1[infoset]) {
+                *regret += *delta;
             }
         }
 
@@ -137,13 +143,7 @@ impl CfrState {
     }
 
     fn accumulate_average_profile(&mut self, game: &ExtensiveGame, profile: &StrategyProfile) {
-        accumulate_average_profile_node(
-            self,
-            game,
-            game.root(),
-            profile,
-            1.0,
-        );
+        accumulate_average_profile_node(self, game, game.root(), profile, 1.0);
     }
 }
 
@@ -159,9 +159,15 @@ fn regret_matching(regrets: &[f64], action_count: usize) -> Vec<f64> {
     if positive_sum > 0.0 {
         normalize_probabilities(
             regrets
-            .iter()
-            .map(|value| if *value > 0.0 { *value / positive_sum } else { 0.0 })
-            .collect(),
+                .iter()
+                .map(|value| {
+                    if *value > 0.0 {
+                        *value / positive_sum
+                    } else {
+                        0.0
+                    }
+                })
+                .collect(),
         )
     } else {
         let probability = 1.0 / action_count as f64;
@@ -208,7 +214,8 @@ fn accumulate_average_profile_node(
             let strategy = profile.probabilities(*infoset);
             state.average_denominators[*infoset] += reach_probability;
             for (action_index, action) in actions.iter().enumerate() {
-                state.average_numerators[*infoset][action_index] += reach_probability * strategy[action_index];
+                state.average_numerators[*infoset][action_index] +=
+                    reach_probability * strategy[action_index];
                 accumulate_average_profile_node(
                     state,
                     game,
@@ -221,6 +228,7 @@ fn accumulate_average_profile_node(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn cfr_traverse(
     game: &ExtensiveGame,
     node_id: usize,
