@@ -64,6 +64,21 @@ The following are out of scope for v1 unless this file and `PLAN.md` are updated
 - browser-first or multi-user deployment
 - subtree-grafting partial re-solve
 
+### 2.4 Current Implementation Staging
+
+The broader v1 product target remains flop-, turn-, and river-rooted heads-up `NLHE` cash solving.
+
+The first landed backend correctness milestone is intentionally narrower:
+- river-rooted only
+- exact public board
+- exact weighted combo ranges for `OOP` and `IP`
+- single-bet / no-raise river template
+- exact showdown evaluation
+- tabular `CFR` for this slice
+- exact exploitability on bounded conformance fixtures
+
+This staging note is an implementation milestone, not a rewrite of the broader v1 scope.
+
 ## 3. User Workstation Flows
 
 The product is a workstation, not a solver library with a decorative UI.
@@ -285,12 +300,13 @@ Every solve request must canonicalize into a versioned `SolveConfig` with these 
 - `tree_template`
   - `template_id`
   - `template_version`
-  - per-street discrete size sets
-  - raise policy
-  - all-in policy
-  - maximum raises per street
+  - `first_bet_size`
+  - `after_check_bet_size`
+  - `max_raises_per_street`
+  - `allow_all_in`
 - `node_locks`
   - zero or more lock entries with a canonical node path and normalized action frequencies
+  - current backend slice requires this list to be empty
 - `solver_settings`
   - algorithm family
   - iteration or stopping budget
@@ -333,14 +349,21 @@ The result layer must distinguish between:
 
 The v1 solver uses versioned finite action templates.
 
-Rules:
+Broader v1 rules:
 - no arbitrary continuous bet sizes
-- all-in is legal whenever stack rules allow it
 - each template is versioned and named
 - template choice is part of tree identity
-- node locks are accepted only on supported decision nodes with complete, normalized frequencies
 
-The UI may expose a small vetted palette of discrete size overrides, but v1 should not accept unconstrained float inputs as action sizes.
+Current landed backend slice:
+- template id: `river_single_bet_v1`
+- root actor may `check` or make one fixed-size bet
+- after a root `check`, the opponent may `check` or make one fixed-size bet
+- facing a bet, the player may `fold` or `call`
+- no raises
+- no all-in override policy
+- node locks are not yet implemented and must be rejected
+
+The UI may expose a small vetted palette of discrete size overrides later, but v1 should not accept unconstrained float inputs as action sizes.
 
 ### 8.2 Solver Strategy
 
@@ -351,6 +374,7 @@ Validation path:
 Production path:
 - `DCFR` is the preferred v1 production algorithm for heads-up postflop trees
 - `CFR+` is acceptable only if implementation simplicity materially reduces delivery risk
+- plain tabular `CFR` is acceptable for the first exact river-only correctness slice
 
 Requirements:
 - average strategy accumulation is mandatory
@@ -451,6 +475,33 @@ Before trusting poker-specific results:
 - Kuhn Poker validation must converge within documented tolerance
 - Leduc or equivalent toy-game validation must converge within documented tolerance
 - first poker regression scenarios must reproduce stable strategy and EV summaries within documented tolerances
+
+Validation work must prefer exact oracles over pattern-matching heuristics:
+- exact chance enumeration where the game is small enough
+- exact terminal utility checks
+- exact best-response or exploitability checks for toy games
+- exact step-state regression fixtures for deterministic CFR updates
+- exact bounded river-poker equilibrium fixtures for the first poker slice
+
+Named baseline conformance fixtures:
+- `tests/fixtures/conformance/kuhn_reference_equilibrium.fixture`
+  - representative Kuhn Poker equilibrium profile from the documented equilibrium family
+  - exact expected value for `P0`: `-1/18`
+  - exact exploitability target: `nash_conv <= 1e-12`
+- `tests/fixtures/conformance/skewed_matrix_cfr_iteration_1.fixture`
+  - exact first-iteration regret and average-strategy state for a hidden-action `2x2` zero-sum matrix game
+  - protects regret-sign, reach-weight, and averaging logic
+- `tests/fixtures/conformance/river_polarized_equilibrium.fixture`
+  - exact bounded river poker equilibrium for the first production poker slice
+  - exact expected value for `OOP`: `2.5`
+  - exact exploitability target: `nash_conv <= 1e-12`
+- `crates/solver-core/tests/conformance.rs`
+  - exact Kuhn game-shape, terminal-utility, equilibrium-value, and exploitability checks
+  - exact first-iteration CFR regression for a hidden-action matrix game
+- `crates/solver-core/tests/poker_conformance.rs`
+  - exact river poker game-shape checks
+  - exact river equilibrium and exploitability checks
+  - exact first-iteration CFR regression for the river poker slice
 
 ### 11.2 Reference Hardware
 

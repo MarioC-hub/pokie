@@ -1,0 +1,5 @@
+expected_value_p0=2.5
+max_nash_conv=1e-12
+river:oop:7c7h:root=0.0,1.0
+river:oop:JcAc:root=0.5,0.5
+river:ip:QhKc:b=0.5,0.5

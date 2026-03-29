@@ -1,0 +1,7 @@
+[regrets]
+skewed_matrix:P0/root=0.75,-0.75
+skewed_matrix:P1/hidden=0.25,-0.25
+
+[average_profile]
+skewed_matrix:P0/root=0.5,0.5
+skewed_matrix:P1/hidden=0.5,0.5
