@@ -67,34 +67,18 @@ impl From<RiverTreeError> for PokerSolveError {
 
 pub fn build_river_game(config: &SolveConfig) -> Result<ExtensiveGame, PokerSolveError> {
     config.validate()?;
-    let tree = build_river_tree(config)?;
     let config_hash = config.canonical_hash()?;
+    let tree = build_river_tree(config)?;
     let deals = enumerate_deals(&config.ranges.oop_range, &config.ranges.ip_range)?;
-
-    let mut registry = InfosetRegistry::default();
-    let mut nodes = Vec::new();
-    let root = build_chance_root(
-        &mut nodes,
-        &mut registry,
-        &tree,
-        &config.root_state.board,
-        &deals,
-    );
-    let game = ExtensiveGame::new(
-        format!("river_poker:{}:{}", config_hash, tree.tree_identity),
-        root,
-        nodes,
-        registry.into_infosets(),
-    );
-    game.validate().map_err(PokerSolveError::Tree)?;
-    Ok(game)
+    build_river_game_from_parts(config, &config_hash, &tree, &deals)
 }
 
 pub fn solve_river_spot(config: &SolveConfig) -> Result<PokerSolveResult, PokerSolveError> {
     config.validate()?;
     let config_hash = config.canonical_hash()?;
     let tree = build_river_tree(config)?;
-    let game = build_river_game(config)?;
+    let deals = enumerate_deals(&config.ranges.oop_range, &config.ranges.ip_range)?;
+    let game = build_river_game_from_parts(config, &config_hash, &tree, &deals)?;
     let summary = solve_game(&game, config.solver_settings.iterations);
     let strategy_by_infoset = game
         .infosets()
@@ -127,13 +111,35 @@ struct DealOutcome {
     probability: f64,
 }
 
+fn build_river_game_from_parts(
+    config: &SolveConfig,
+    config_hash: &str,
+    tree: &RiverTree,
+    deals: &[DealOutcome],
+) -> Result<ExtensiveGame, PokerSolveError> {
+    let mut registry = InfosetRegistry::default();
+    let mut nodes = Vec::new();
+    let root = build_chance_root(
+        &mut nodes,
+        &mut registry,
+        tree,
+        &config.root_state.board,
+        deals,
+    );
+    let game = ExtensiveGame::new(
+        format!("river_poker:{}:{}", config_hash, tree.tree_identity),
+        root,
+        nodes,
+        registry.into_infosets(),
+    );
+    game.validate().map_err(PokerSolveError::Tree)?;
+    Ok(game)
+}
+
 fn enumerate_deals(
     oop_range: &WeightedRange,
     ip_range: &WeightedRange,
 ) -> Result<Vec<DealOutcome>, PokerSolveError> {
-    let oop_range = oop_range.normalized()?;
-    let ip_range = ip_range.normalized()?;
-
     let mut deals = Vec::new();
     let mut total = 0.0;
     for oop in oop_range.combos() {
