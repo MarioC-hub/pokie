@@ -8,7 +8,10 @@ use config_core::{
     WeightedRange, CURRENT_SCHEMA_VERSION, RIVER_SINGLE_BET_TEMPLATE_ID,
 };
 use serde::{Deserialize, Serialize};
-use solver_core::poker::{PokerSolveError, PokerSolveResult};
+use solver_core::{
+    game::NodeKind,
+    poker::{PokerSolveError, PokerSolveResult},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -16,16 +19,16 @@ pub struct RiverSolveRequestDto {
     pub board: String,
     pub oop_range: String,
     pub ip_range: String,
-    pub pot_size: u32,
-    pub oop_stack: u32,
-    pub ip_stack: u32,
+    pub pot_size: String,
+    pub oop_stack: String,
+    pub ip_stack: String,
     pub player_to_act: String,
-    pub small_blind: u32,
-    pub big_blind: u32,
-    pub first_bet_size: u32,
-    pub after_check_bet_size: u32,
-    pub iterations: usize,
-    pub deterministic_seed: u64,
+    pub small_blind: String,
+    pub big_blind: String,
+    pub first_bet_size: String,
+    pub after_check_bet_size: String,
+    pub iterations: String,
+    pub deterministic_seed: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -65,13 +68,15 @@ pub struct NormalizedRiverConfigDto {
     pub iterations: usize,
     pub checkpoint_cadence: usize,
     pub thread_count: usize,
-    pub deterministic_seed: u64,
+    pub deterministic_seed: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct RiverSolveResponseDto {
     pub config_hash: String,
+    pub compatible_deal_count: usize,
+    pub normalized: NormalizedRiverConfigDto,
     pub tree_identity: String,
     pub iterations: usize,
     pub root_value_oop: f64,
@@ -85,9 +90,6 @@ pub struct RiverSolveResponseDto {
 #[serde(rename_all = "camelCase")]
 pub struct InfosetStrategyDto {
     pub key: String,
-    pub player: String,
-    pub private_hand: String,
-    pub history: String,
     pub actions: Vec<ActionProbabilityDto>,
 }
 
@@ -115,6 +117,16 @@ impl RiverSolveRequestDto {
         let ip_range = WeightedRange::from_str(self.ip_range.trim())
             .map_err(|error| app_error("invalid_ip_range", format!("invalid IP range: {error}")))?;
         let player_to_act = parse_player_role(&self.player_to_act)?;
+        let pot_size = parse_u32_field("pot_size", &self.pot_size)?;
+        let oop_stack = parse_u32_field("oop_stack", &self.oop_stack)?;
+        let ip_stack = parse_u32_field("ip_stack", &self.ip_stack)?;
+        let small_blind = parse_u32_field("small_blind", &self.small_blind)?;
+        let big_blind = parse_u32_field("big_blind", &self.big_blind)?;
+        let first_bet_size = parse_u32_field("first_bet_size", &self.first_bet_size)?;
+        let after_check_bet_size =
+            parse_u32_field("after_check_bet_size", &self.after_check_bet_size)?;
+        let iterations = parse_usize_field("iterations", &self.iterations)?;
+        let deterministic_seed = parse_u64_field("deterministic_seed", &self.deterministic_seed)?;
 
         Ok(SolveConfig {
             schema_version: CURRENT_SCHEMA_VERSION,
@@ -126,13 +138,13 @@ impl RiverSolveRequestDto {
             root_state: RootState {
                 street: Street::River,
                 board,
-                oop_stack: self.oop_stack,
-                ip_stack: self.ip_stack,
-                pot_size: self.pot_size,
+                oop_stack,
+                ip_stack,
+                pot_size,
                 player_to_act,
                 blind_profile: BlindProfile {
-                    small_blind: self.small_blind,
-                    big_blind: self.big_blind,
+                    small_blind,
+                    big_blind,
                 },
                 rake_profile: RakeProfile {
                     rake_bps: 0,
@@ -146,18 +158,18 @@ impl RiverSolveRequestDto {
             tree_template: RiverTreeTemplate {
                 template_id: RIVER_SINGLE_BET_TEMPLATE_ID.to_string(),
                 template_version: 1,
-                first_bet_size: self.first_bet_size,
-                after_check_bet_size: self.after_check_bet_size,
+                first_bet_size,
+                after_check_bet_size,
                 max_raises_per_street: 0,
                 allow_all_in: false,
             },
             node_locks: Vec::new(),
             solver_settings: SolverSettings {
                 algorithm: AlgorithmFamily::Cfr,
-                iterations: self.iterations,
+                iterations,
                 checkpoint_cadence: 0,
                 thread_count: 1,
-                deterministic_seed: self.deterministic_seed,
+                deterministic_seed,
             },
         })
     }
@@ -168,16 +180,16 @@ pub fn sample_river_request() -> RiverSolveRequestDto {
         board: "Ks7d4c2h2d".to_string(),
         oop_range: "7c7h:1.0,AcJc:1.0".to_string(),
         ip_range: "KcQh:1.0".to_string(),
-        pot_size: 10,
-        oop_stack: 100,
-        ip_stack: 100,
+        pot_size: "10".to_string(),
+        oop_stack: "100".to_string(),
+        ip_stack: "100".to_string(),
         player_to_act: "oop".to_string(),
-        small_blind: 1,
-        big_blind: 2,
-        first_bet_size: 10,
-        after_check_bet_size: 0,
-        iterations: 2_000,
-        deterministic_seed: 0,
+        small_blind: "1".to_string(),
+        big_blind: "2".to_string(),
+        first_bet_size: "10".to_string(),
+        after_check_bet_size: "0".to_string(),
+        iterations: "2000".to_string(),
+        deterministic_seed: "0".to_string(),
     }
 }
 
@@ -208,7 +220,7 @@ pub fn solve_river_spot(
 ) -> Result<RiverSolveResponseDto, AppErrorDto> {
     let config = request.to_solve_config()?;
     let result = solver_core::poker::solve_river_spot(&config).map_err(map_solve_error)?;
-    Ok(RiverSolveResponseDto::from_result(&result))
+    Ok(RiverSolveResponseDto::from_result(&result, &config))
 }
 
 impl NormalizedRiverConfigDto {
@@ -240,48 +252,56 @@ impl NormalizedRiverConfigDto {
             iterations: config.solver_settings.iterations,
             checkpoint_cadence: config.solver_settings.checkpoint_cadence,
             thread_count: config.solver_settings.thread_count,
-            deterministic_seed: config.solver_settings.deterministic_seed,
+            deterministic_seed: config.solver_settings.deterministic_seed.to_string(),
         }
     }
 }
 
 impl RiverSolveResponseDto {
-    fn from_result(result: &PokerSolveResult) -> Self {
-        let mut root_infosets = result
-            .game
-            .infosets()
-            .iter()
-            .filter_map(|infoset| {
-                let parsed = parse_infoset_key(&infoset.key)?;
-                if parsed.history != "root" {
-                    return None;
-                }
-                let actions = infoset
-                    .action_labels
-                    .iter()
-                    .cloned()
-                    .zip(
-                        result
-                            .average_profile
-                            .probabilities(infoset.id)
-                            .iter()
-                            .copied(),
-                    )
-                    .map(|(label, probability)| ActionProbabilityDto { label, probability })
-                    .collect();
-                Some(InfosetStrategyDto {
-                    key: infoset.key.clone(),
-                    player: parsed.player,
-                    private_hand: parsed.private_hand,
-                    history: parsed.history,
-                    actions,
+    fn from_result(result: &PokerSolveResult, config: &SolveConfig) -> Self {
+        let compatible_deal_count = match &result.game.node(result.game.root()).kind {
+            NodeKind::Chance { outcomes } => outcomes.len(),
+            _ => 0,
+        };
+
+        let root_infoset_ids = match &result.game.node(result.game.root()).kind {
+            NodeKind::Chance { outcomes } => outcomes
+                .iter()
+                .filter_map(|outcome| match &result.game.node(outcome.child).kind {
+                    NodeKind::Decision { infoset, .. } => Some(*infoset),
+                    _ => None,
                 })
+                .collect::<std::collections::BTreeSet<_>>(),
+            _ => std::collections::BTreeSet::new(),
+        };
+
+        let root_infosets = root_infoset_ids
+            .into_iter()
+            .map(|infoset_id| {
+                let infoset = result.game.infoset(infoset_id);
+                InfosetStrategyDto {
+                    key: infoset.key.clone(),
+                    actions: infoset
+                        .action_labels
+                        .iter()
+                        .cloned()
+                        .zip(
+                            result
+                                .average_profile
+                                .probabilities(infoset.id)
+                                .iter()
+                                .copied(),
+                        )
+                        .map(|(label, probability)| ActionProbabilityDto { label, probability })
+                        .collect(),
+                }
             })
-            .collect::<Vec<_>>();
-        root_infosets.sort_by(|left, right| left.key.cmp(&right.key));
+            .collect();
 
         Self {
             config_hash: result.config_hash.clone(),
+            compatible_deal_count,
+            normalized: NormalizedRiverConfigDto::from_config(config),
             tree_identity: result.tree_identity.clone(),
             iterations: result.iterations,
             root_value_oop: result.root_value_oop,
@@ -291,12 +311,6 @@ impl RiverSolveResponseDto {
             root_infosets,
         }
     }
-}
-
-struct ParsedInfosetKey {
-    player: String,
-    private_hand: String,
-    history: String,
 }
 
 fn parse_player_role(value: &str) -> Result<PlayerRole, AppErrorDto> {
@@ -310,19 +324,30 @@ fn parse_player_role(value: &str) -> Result<PlayerRole, AppErrorDto> {
     }
 }
 
-fn parse_infoset_key(key: &str) -> Option<ParsedInfosetKey> {
-    let mut parts = key.splitn(4, ':');
-    let street = parts.next()?;
-    let player = parts.next()?;
-    let private_hand = parts.next()?;
-    let history = parts.next()?;
-    if street != "river" {
-        return None;
-    }
-    Some(ParsedInfosetKey {
-        player: player.to_string(),
-        private_hand: private_hand.to_string(),
-        history: history.to_string(),
+fn parse_u32_field(field: &str, value: &str) -> Result<u32, AppErrorDto> {
+    value.trim().parse::<u32>().map_err(|_| {
+        app_error(
+            format!("invalid_{field}"),
+            format!("{field} must be a non-negative integer string"),
+        )
+    })
+}
+
+fn parse_usize_field(field: &str, value: &str) -> Result<usize, AppErrorDto> {
+    value.trim().parse::<usize>().map_err(|_| {
+        app_error(
+            format!("invalid_{field}"),
+            format!("{field} must be a non-negative integer string"),
+        )
+    })
+}
+
+fn parse_u64_field(field: &str, value: &str) -> Result<u64, AppErrorDto> {
+    value.trim().parse::<u64>().map_err(|_| {
+        app_error(
+            format!("invalid_{field}"),
+            format!("{field} must be a non-negative integer string"),
+        )
     })
 }
 
@@ -360,23 +385,32 @@ mod tests {
         assert_eq!(response.normalized.board, "2d2h4c7dKs");
         assert_eq!(response.normalized.oop_range, "7c7h:0.5,JcAc:0.5");
         assert_eq!(response.normalized.ip_range, "QhKc:1");
+        assert_eq!(response.normalized.deterministic_seed, "0");
     }
 
     #[test]
     fn one_iteration_solve_exposes_exact_root_infosets() {
         let mut request = sample_river_request();
-        request.iterations = 1;
+        request.iterations = "1".to_string();
         let response = solve_river_spot(&request).expect("solve should succeed");
 
         assert_eq!(response.iterations, 1);
         assert_eq!(response.root_infosets.len(), 2);
         for infoset in &response.root_infosets {
-            assert_eq!(infoset.history, "root");
+            assert!(infoset.key.ends_with(":root"));
             assert_eq!(infoset.actions.len(), 2);
             assert_eq!(infoset.actions[0].label, "check");
             assert_eq!(infoset.actions[1].label, "bet_10");
             assert!((infoset.actions[0].probability - 0.5).abs() <= 1e-12);
             assert!((infoset.actions[1].probability - 0.5).abs() <= 1e-12);
         }
+    }
+
+    #[test]
+    fn fractional_numeric_fields_are_rejected_before_solver_execution() {
+        let mut request = sample_river_request();
+        request.first_bet_size = "10.5".to_string();
+        let error = validate_config(&request).expect_err("fractional sizes should fail validation");
+        assert_eq!(error.code, "invalid_first_bet_size");
     }
 }

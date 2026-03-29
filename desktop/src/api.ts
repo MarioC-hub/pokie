@@ -6,16 +6,16 @@ export interface RiverSolveRequest {
   board: string;
   oopRange: string;
   ipRange: string;
-  potSize: number;
-  oopStack: number;
-  ipStack: number;
+  potSize: string;
+  oopStack: string;
+  ipStack: string;
   playerToAct: PlayerToAct;
-  smallBlind: number;
-  bigBlind: number;
-  firstBetSize: number;
-  afterCheckBetSize: number;
-  iterations: number;
-  deterministicSeed: number;
+  smallBlind: string;
+  bigBlind: string;
+  firstBetSize: string;
+  afterCheckBetSize: string;
+  iterations: string;
+  deterministicSeed: string;
 }
 
 export interface AppError {
@@ -30,9 +30,6 @@ export interface ActionProbability {
 
 export interface InfosetStrategy {
   key: string;
-  player: string;
-  privateHand: string;
-  history: string;
   actions: ActionProbability[];
 }
 
@@ -63,7 +60,7 @@ export interface NormalizedRiverConfig {
   iterations: number;
   checkpointCadence: number;
   threadCount: number;
-  deterministicSeed: number;
+  deterministicSeed: string;
 }
 
 export interface ValidateConfigResponse {
@@ -74,6 +71,8 @@ export interface ValidateConfigResponse {
 
 export interface RiverSolveResponse {
   configHash: string;
+  compatibleDealCount: number;
+  normalized: NormalizedRiverConfig;
   treeIdentity: string;
   iterations: number;
   rootValueOop: number;
@@ -83,21 +82,21 @@ export interface RiverSolveResponse {
   rootInfosets: InfosetStrategy[];
 }
 
-export const fallbackSampleRequest: RiverSolveRequest = {
-  board: 'Ks7d4c2h2d',
-  oopRange: '7c7h:1.0,AcJc:1.0',
-  ipRange: 'KcQh:1.0',
-  potSize: 10,
-  oopStack: 100,
-  ipStack: 100,
+export const emptyRiverSolveRequest = (): RiverSolveRequest => ({
+  board: '',
+  oopRange: '',
+  ipRange: '',
+  potSize: '0',
+  oopStack: '100',
+  ipStack: '100',
   playerToAct: 'oop',
-  smallBlind: 1,
-  bigBlind: 2,
-  firstBetSize: 10,
-  afterCheckBetSize: 0,
-  iterations: 2000,
-  deterministicSeed: 0,
-};
+  smallBlind: '1',
+  bigBlind: '2',
+  firstBetSize: '0',
+  afterCheckBetSize: '0',
+  iterations: '1000',
+  deterministicSeed: '0',
+});
 
 function normalizeError(error: unknown): AppError {
   if (error && typeof error === 'object' && 'code' in error && 'message' in error) {
@@ -112,8 +111,8 @@ function normalizeError(error: unknown): AppError {
 export async function loadSampleRequest(): Promise<RiverSolveRequest> {
   try {
     return await invoke<RiverSolveRequest>('sample_river_request');
-  } catch {
-    return fallbackSampleRequest;
+  } catch (error) {
+    throw normalizeError(error);
   }
 }
 

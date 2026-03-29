@@ -4,13 +4,13 @@ import {
   RiverSolveRequest,
   RiverSolveResponse,
   ValidateConfigResponse,
-  fallbackSampleRequest,
+  emptyRiverSolveRequest,
   loadSampleRequest,
   solveRiverSpot,
   validateConfig,
 } from './api';
 
-const numberFields = [
+const integerFields = [
   ['potSize', 'Pot size'],
   ['oopStack', 'OOP stack'],
   ['ipStack', 'IP stack'],
@@ -40,7 +40,7 @@ function toErrorMessage(error: AppError | Error): string {
 }
 
 export default function App() {
-  const [request, setRequest] = useState<RiverSolveRequest>(fallbackSampleRequest);
+  const [request, setRequest] = useState<RiverSolveRequest>(emptyRiverSolveRequest());
   const [validation, setValidation] = useState<ValidateConfigResponse | null>(null);
   const [result, setResult] = useState<RiverSolveResponse | null>(null);
   const [busy, setBusy] = useState<BusyState>('load-sample');
@@ -51,10 +51,12 @@ export default function App() {
     loadSampleRequest()
       .then((sample) => {
         setRequest(sample);
-        setStatus('Sample river-only spot loaded.');
+        setStatus('Sample river-only spot loaded from the desktop backend.');
       })
-      .catch(() => {
-        setStatus('Loaded fallback sample request.');
+      .catch((nextError) => {
+        setRequest(emptyRiverSolveRequest());
+        setStatus('Could not load the backend sample spot. The form is ready for manual input.');
+        setError(toErrorMessage(nextError as AppError));
       })
       .finally(() => setBusy(null));
   }, []);
@@ -64,7 +66,7 @@ export default function App() {
     () => [
       ['Slice', 'HU NLHE cash · river-only · single-bet/no-raise'],
       ['Surface', 'validate_config + solve_river_spot'],
-      ['Board', request.board],
+      ['Board', request.board || '—'],
       ['Actor', request.playerToAct.toUpperCase()],
     ],
     [request.board, request.playerToAct],
@@ -83,11 +85,11 @@ export default function App() {
       setValidation(null);
       setResult(null);
       setStatus('Sample river-only spot loaded from the desktop backend.');
-    } catch {
-      setRequest(fallbackSampleRequest);
+    } catch (nextError) {
       setValidation(null);
       setResult(null);
-      setStatus('Loaded fallback sample request because the desktop backend sample command was unavailable.');
+      setStatus('Could not reload the backend sample spot.');
+      setError(toErrorMessage(nextError as AppError));
     } finally {
       setBusy(null);
     }
@@ -101,10 +103,10 @@ export default function App() {
       const response = await validateConfig(request);
       setValidation(response);
       setStatus('Config validated and canonicalized by the Rust backend.');
-    } catch (error) {
+    } catch (nextError) {
       setValidation(null);
       setStatus('Validation failed.');
-      setError(toErrorMessage(error as AppError));
+      setError(toErrorMessage(nextError as AppError));
     } finally {
       setBusy(null);
     }
@@ -114,15 +116,18 @@ export default function App() {
     setBusy('solve');
     setError(null);
     try {
-      const nextValidation = await validateConfig(request);
       const solveResponse = await solveRiverSpot(request);
-      setValidation(nextValidation);
+      setValidation({
+        configHash: solveResponse.configHash,
+        compatibleDealCount: solveResponse.compatibleDealCount,
+        normalized: solveResponse.normalized,
+      });
       setResult(solveResponse);
       setStatus('Solve completed through the exact river backend slice.');
-    } catch (error) {
+    } catch (nextError) {
       setResult(null);
       setStatus('Solve failed.');
-      setError(toErrorMessage(error as AppError));
+      setError(toErrorMessage(nextError as AppError));
     } finally {
       setBusy(null);
     }
@@ -194,14 +199,15 @@ export default function App() {
           </div>
 
           <div className="field-grid">
-            {numberFields.map(([key, label]) => (
+            {integerFields.map(([key, label]) => (
               <label className="field" key={key}>
                 <span>{label}</span>
                 <input
-                  type="number"
-                  min={0}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={request[key]}
-                  onChange={(event) => updateField(key, Number(event.target.value))}
+                  onChange={(event) => updateField(key, event.target.value)}
                 />
               </label>
             ))}
@@ -288,8 +294,7 @@ export default function App() {
                   {result.rootInfosets.map((infoset) => (
                     <article className="infoset-card" key={infoset.key}>
                       <header>
-                        <strong>{infoset.player.toUpperCase()} · {infoset.privateHand}</strong>
-                        <span>{infoset.history}</span>
+                        <strong>{infoset.key}</strong>
                       </header>
                       <ul>
                         {infoset.actions.map((action) => (
