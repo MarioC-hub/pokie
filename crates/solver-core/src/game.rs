@@ -51,8 +51,12 @@ pub struct ChanceOutcome {
 
 #[derive(Debug, Clone)]
 pub enum NodeKind {
-    Terminal { utility_p0: f64 },
-    Chance { outcomes: Vec<ChanceOutcome> },
+    Terminal {
+        utility_p0: f64,
+    },
+    Chance {
+        outcomes: Vec<ChanceOutcome>,
+    },
     Decision {
         player: Player,
         infoset: InfosetId,
@@ -84,7 +88,12 @@ pub struct ExtensiveGame {
 }
 
 impl ExtensiveGame {
-    pub fn new(name: impl Into<String>, root: NodeId, nodes: Vec<Node>, infosets: Vec<Infoset>) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        root: NodeId,
+        nodes: Vec<Node>,
+        infosets: Vec<Infoset>,
+    ) -> Self {
         Self {
             name: name.into(),
             root,
@@ -118,7 +127,10 @@ impl ExtensiveGame {
     }
 
     pub fn infoset_id(&self, key: &str) -> Option<InfosetId> {
-        self.infosets.iter().find(|infoset| infoset.key == key).map(|infoset| infoset.id)
+        self.infosets
+            .iter()
+            .find(|infoset| infoset.key == key)
+            .map(|infoset| infoset.id)
     }
 
     pub fn player_infosets(&self, player: Player) -> Vec<InfosetId> {
@@ -193,7 +205,9 @@ impl ExtensiveGame {
                     actions,
                 } => {
                     if *infoset >= self.infosets.len() {
-                        return Err(format!("decision node {node_id} references missing infoset {infoset}"));
+                        return Err(format!(
+                            "decision node {node_id} references missing infoset {infoset}"
+                        ));
                     }
                     if actions.is_empty() {
                         return Err(format!("decision node {node_id} has no actions"));
@@ -224,10 +238,9 @@ impl ExtensiveGame {
                 return Err(format!("infoset {} has no action labels", infoset.key));
             }
             for &node_id in &infoset.node_ids {
-                let node = self
-                    .nodes
-                    .get(node_id)
-                    .ok_or_else(|| format!("infoset {} references missing node {node_id}", infoset.key))?;
+                let node = self.nodes.get(node_id).ok_or_else(|| {
+                    format!("infoset {} references missing node {node_id}", infoset.key)
+                })?;
                 let NodeKind::Decision {
                     player,
                     infoset: node_infoset,

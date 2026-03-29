@@ -4,7 +4,9 @@ use config_core::{ConfigError, PlayerRole, SolveConfig};
 use equity_core::compare_hands;
 use poker_core::{Board, HoleCards};
 use range_core::{RangeError, WeightedRange};
-use tree_core::{build_river_tree, RiverTerminalOutcome, RiverTree, RiverTreeError, RiverTreeNodeKind};
+use tree_core::{
+    build_river_tree, RiverTerminalOutcome, RiverTree, RiverTreeError, RiverTreeNodeKind,
+};
 
 use crate::{
     game::{ActionEdge, ChanceOutcome, ExtensiveGame, Infoset, Node, NodeKind, Player},
@@ -40,7 +42,10 @@ impl fmt::Display for PokerSolveError {
             Self::Config(value) => write!(f, "config error: {value}"),
             Self::Range(value) => write!(f, "range error: {value}"),
             Self::Tree(value) => write!(f, "tree error: {value}"),
-            Self::EmptyChanceSupport => write!(f, "no disjoint private-hand combinations remain after card removal"),
+            Self::EmptyChanceSupport => write!(
+                f,
+                "no disjoint private-hand combinations remain after card removal"
+            ),
         }
     }
 }
@@ -173,7 +178,15 @@ fn build_chance_root(
 ) -> usize {
     let mut outcomes = Vec::new();
     for deal in deals {
-        let child = build_public_subtree(nodes, registry, tree, board, tree.root_node_id, deal.oop, deal.ip);
+        let child = build_public_subtree(
+            nodes,
+            registry,
+            tree,
+            board,
+            tree.root_node_id,
+            deal.oop,
+            deal.ip,
+        );
         outcomes.push(ChanceOutcome {
             label: format!("deal:{}|{}", deal.oop, deal.ip),
             probability: deal.probability,
@@ -203,7 +216,15 @@ fn build_public_subtree(
             let children = actions
                 .iter()
                 .map(|action| {
-                    let child = build_public_subtree(nodes, registry, tree, board, action.next_node_id, oop, ip);
+                    let child = build_public_subtree(
+                        nodes,
+                        registry,
+                        tree,
+                        board,
+                        action.next_node_id,
+                        oop,
+                        ip,
+                    );
                     ActionEdge {
                         label: action.label.clone(),
                         child,
@@ -215,8 +236,16 @@ fn build_public_subtree(
                 PlayerRole::Oop => oop,
                 PlayerRole::Ip => ip,
             };
-            let infoset_key = format!("river:{}:{}:{}", actor_key(*player), private_hand, public_node.history_key);
-            let action_labels = children.iter().map(|edge| edge.label.clone()).collect::<Vec<_>>();
+            let infoset_key = format!(
+                "river:{}:{}:{}",
+                actor_key(*player),
+                private_hand,
+                public_node.history_key
+            );
+            let action_labels = children
+                .iter()
+                .map(|edge| edge.label.clone())
+                .collect::<Vec<_>>();
             let infoset_id = registry.register(
                 to_extensive_player(*player),
                 infoset_key,
@@ -259,7 +288,8 @@ fn terminal_utility(
             PlayerRole::Oop => utility_magnitude as f64,
             PlayerRole::Ip => -(utility_magnitude as f64),
         },
-        RiverTerminalOutcome::Showdown { utility_magnitude } => match compare_hands(board, oop, ip) {
+        RiverTerminalOutcome::Showdown { utility_magnitude } => match compare_hands(board, oop, ip)
+        {
             std::cmp::Ordering::Greater => utility_magnitude as f64,
             std::cmp::Ordering::Less => -(utility_magnitude as f64),
             std::cmp::Ordering::Equal => 0.0,

@@ -6,9 +6,17 @@ pub fn simultaneous_matrix_game(
     column_actions: &[&str],
     payoff_matrix_p0: &[Vec<f64>],
 ) -> ExtensiveGame {
-    assert_eq!(payoff_matrix_p0.len(), row_actions.len(), "row action count mismatch");
+    assert_eq!(
+        payoff_matrix_p0.len(),
+        row_actions.len(),
+        "row action count mismatch"
+    );
     for row in payoff_matrix_p0 {
-        assert_eq!(row.len(), column_actions.len(), "column action count mismatch");
+        assert_eq!(
+            row.len(),
+            column_actions.len(),
+            "column action count mismatch"
+        );
     }
 
     let mut nodes = Vec::new();
@@ -17,14 +25,20 @@ pub fn simultaneous_matrix_game(
             id: 0,
             player: Player::P0,
             key: format!("{name}:P0/root"),
-            action_labels: row_actions.iter().map(|label| (*label).to_string()).collect(),
+            action_labels: row_actions
+                .iter()
+                .map(|label| (*label).to_string())
+                .collect(),
             node_ids: vec![0],
         },
         Infoset {
             id: 1,
             player: Player::P1,
             key: format!("{name}:P1/hidden"),
-            action_labels: column_actions.iter().map(|label| (*label).to_string()).collect(),
+            action_labels: column_actions
+                .iter()
+                .map(|label| (*label).to_string())
+                .collect(),
             node_ids: Vec::new(),
         },
     ];

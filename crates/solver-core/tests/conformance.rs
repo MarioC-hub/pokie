@@ -45,7 +45,9 @@ fn kuhn_terminal_payoffs_are_exact_for_representative_histories() {
         .nodes()
         .iter()
         .filter_map(|node| match node.kind {
-            solver_core::game::NodeKind::Terminal { utility_p0 } => Some((node.history.as_str(), utility_p0)),
+            solver_core::game::NodeKind::Terminal { utility_p0 } => {
+                Some((node.history.as_str(), utility_p0))
+            }
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -66,7 +68,11 @@ fn kuhn_reference_equilibrium_has_zero_exploitability_and_exact_value() {
 
     let report = exact_exploitability(&game, &profile);
     assert_close(report.profile_value_p0, fixture.expected_value_p0, 1e-12);
-    assert!(report.nash_conv <= fixture.max_nash_conv, "exploitability too high: {}", report.nash_conv);
+    assert!(
+        report.nash_conv <= fixture.max_nash_conv,
+        "exploitability too high: {}",
+        report.nash_conv
+    );
     assert!(report.p0_improvement <= fixture.max_nash_conv);
     assert!(report.p1_improvement <= fixture.max_nash_conv);
 
@@ -99,7 +105,9 @@ fn skewed_matrix_first_iteration_regrets_match_fixture_exactly() {
 
     let average_profile = state.average_profile(&game);
     for (infoset_key, expected_row) in fixture.average_profile {
-        let actual_row = average_profile.probability_by_key(&game, &infoset_key).unwrap();
+        let actual_row = average_profile
+            .probability_by_key(&game, &infoset_key)
+            .unwrap();
         assert_slice_close(actual_row, &expected_row, 1e-12);
     }
 
@@ -135,7 +143,11 @@ fn exact_best_response_detects_strictly_exploitable_uniform_kuhn_profile() {
     let report = exact_exploitability(&game, &uniform);
     assert!(report.nash_conv > 0.0);
     assert_close(report.best_response_value_p0, br_p0, 1e-12);
-    assert_close(report.worst_case_value_p0_against_p1_best_response, br_p1, 1e-12);
+    assert_close(
+        report.worst_case_value_p0_against_p1_best_response,
+        br_p1,
+        1e-12,
+    );
 }
 
 struct KuhnEquilibriumFixture {
@@ -150,7 +162,8 @@ struct MatrixIterationFixture {
 }
 
 fn load_manifest() -> Vec<(String, String)> {
-    let text = fs::read_to_string(fixture_dir().join("manifest.txt")).expect("manifest should read");
+    let text =
+        fs::read_to_string(fixture_dir().join("manifest.txt")).expect("manifest should read");
     text.lines()
         .map(str::trim)
         .filter(|line| !line.is_empty() && !line.starts_with('#'))
@@ -158,7 +171,10 @@ fn load_manifest() -> Vec<(String, String)> {
             let mut parts = line.split_whitespace();
             let id = parts.next().expect("manifest id").to_string();
             let path = parts.next().expect("manifest path").to_string();
-            assert!(parts.next().is_none(), "unexpected extra manifest columns in {line}");
+            assert!(
+                parts.next().is_none(),
+                "unexpected extra manifest columns in {line}"
+            );
             (id, path)
         })
         .collect()
@@ -197,7 +213,10 @@ fn load_matrix_iteration_fixture() -> MatrixIterationFixture {
     let mut average_profile = BTreeMap::new();
 
     for line in meaningful_lines(&text) {
-        if let Some(section_name) = line.strip_prefix('[').and_then(|line| line.strip_suffix(']')) {
+        if let Some(section_name) = line
+            .strip_prefix('[')
+            .and_then(|line| line.strip_suffix(']'))
+        {
             current_section = Some(section_name);
             continue;
         }
@@ -231,11 +250,15 @@ fn split_key_value(line: &str) -> (&str, &str) {
 }
 
 fn parse_f64_list(value: &str) -> Vec<f64> {
-    value.split(',').map(|part| parse_f64(part.trim())).collect()
+    value
+        .split(',')
+        .map(|part| parse_f64(part.trim()))
+        .collect()
 }
 
 fn parse_f64(value: &str) -> f64 {
-    value.parse::<f64>()
+    value
+        .parse::<f64>()
         .unwrap_or_else(|_| panic!("expected f64, got {value}"))
 }
 

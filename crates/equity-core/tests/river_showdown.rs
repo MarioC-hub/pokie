@@ -62,8 +62,20 @@ fn evaluate_five_card_hand_orders_categories_and_kickers_exactly() {
 
     assert!(full_house > flush);
 
-    let ace_pair = evaluate_five_card_hand([c(Ace, Spades), c(Ace, Clubs), c(King, Diamonds), c(Queen, Hearts), c(Jack, Hearts)]);
-    let weaker_ace_pair = evaluate_five_card_hand([c(Ace, Spades), c(Ace, Clubs), c(Queen, Diamonds), c(Jack, Hearts), c(Ten, Diamonds)]);
+    let ace_pair = evaluate_five_card_hand([
+        c(Ace, Spades),
+        c(Ace, Clubs),
+        c(King, Diamonds),
+        c(Queen, Hearts),
+        c(Jack, Hearts),
+    ]);
+    let weaker_ace_pair = evaluate_five_card_hand([
+        c(Ace, Spades),
+        c(Ace, Clubs),
+        c(Queen, Diamonds),
+        c(Jack, Hearts),
+        c(Ten, Diamonds),
+    ]);
     assert!(ace_pair > weaker_ace_pair);
 }
 
@@ -73,5 +85,7 @@ fn overlapping_hole_cards_are_rejected_exactly() {
     let hole = parse_hole_cards("As2c").unwrap();
 
     let err = evaluate_seven_card_hand(&board, &hole).unwrap_err();
-    assert!(matches!(err, equity_core::EquityError::Poker(poker_core::PokerError::HoleCardsHitBoard { card }) if card == parse_card("As").unwrap()));
+    assert!(
+        matches!(err, equity_core::EquityError::Poker(poker_core::PokerError::HoleCardsHitBoard { card }) if card == parse_card("As").unwrap())
+    );
 }

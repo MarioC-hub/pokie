@@ -236,7 +236,11 @@ impl HoleCards {
         if card_a == card_b {
             return Err(CardSetError::DuplicateCard(card_a));
         }
-        let (first, second) = if card_a <= card_b { (card_a, card_b) } else { (card_b, card_a) };
+        let (first, second) = if card_a <= card_b {
+            (card_a, card_b)
+        } else {
+            (card_b, card_a)
+        };
         Ok(Self { first, second })
     }
 
@@ -327,9 +331,14 @@ impl FromStr for HoleCards {
     type Err = HoleCardsParseError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let compact: String = value.chars().filter(|char| !char.is_whitespace() && *char != ',').collect();
+        let compact: String = value
+            .chars()
+            .filter(|char| !char.is_whitespace() && *char != ',')
+            .collect();
         if compact.len() != 4 {
-            return Err(HoleCardsParseError::WrongLength { input: value.to_string() });
+            return Err(HoleCardsParseError::WrongLength {
+                input: value.to_string(),
+            });
         }
         let first = Card::from_str(&compact[0..2]).map_err(HoleCardsParseError::Card)?;
         let second = Card::from_str(&compact[2..4]).map_err(HoleCardsParseError::Card)?;
@@ -397,7 +406,9 @@ impl Board {
     }
 
     pub fn bit_mask(&self) -> u64 {
-        self.cards.iter().fold(0u64, |mask, card| mask | card.bit_mask())
+        self.cards
+            .iter()
+            .fold(0u64, |mask, card| mask | card.bit_mask())
     }
 
     pub fn mask(&self) -> u64 {
@@ -449,8 +460,11 @@ impl FromStr for Board {
     type Err = PokerError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let compact: String = value.chars().filter(|char| !char.is_whitespace() && *char != ',').collect();
-        if compact.len() % 2 != 0 {
+        let compact: String = value
+            .chars()
+            .filter(|char| !char.is_whitespace() && *char != ',')
+            .collect();
+        if !compact.len().is_multiple_of(2) {
             return Err(PokerError::InvalidBoardLiteral(value.to_string()));
         }
         let mut cards = Vec::new();
@@ -559,7 +573,10 @@ impl fmt::Display for HoleCardsParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             HoleCardsParseError::WrongLength { input } => {
-                write!(f, "hole-card literal must describe exactly two cards: {input}")
+                write!(
+                    f,
+                    "hole-card literal must describe exactly two cards: {input}"
+                )
             }
             HoleCardsParseError::Card(error) => write!(f, "{error}"),
             HoleCardsParseError::CardSet(error) => write!(f, "{error}"),
@@ -612,7 +629,9 @@ impl fmt::Display for PokerError {
             PokerError::BoardStreetMismatch { expected, found } => {
                 write!(f, "expected {expected} board, found {found}")
             }
-            PokerError::HoleCardsHitBoard { card } => write!(f, "hole cards overlap board card {card}"),
+            PokerError::HoleCardsHitBoard { card } => {
+                write!(f, "hole cards overlap board card {card}")
+            }
         }
     }
 }
@@ -637,7 +656,10 @@ impl From<HoleCardsParseError> for PokerError {
     }
 }
 
-pub fn validate_hole_cards_against_board(hole_cards: HoleCards, board: &Board) -> Result<(), PokerError> {
+pub fn validate_hole_cards_against_board(
+    hole_cards: HoleCards,
+    board: &Board,
+) -> Result<(), PokerError> {
     hole_cards.validate().map_err(PokerError::CardSet)?;
     for card in hole_cards.cards() {
         if board.contains(card) {
@@ -713,9 +735,15 @@ mod tests {
     fn parsing_helpers_are_public_and_canonical() {
         assert_eq!(parse_card("As").unwrap().to_string(), "As");
         assert_eq!(parse_hole_cards("AsKd").unwrap().to_string(), "KdAs");
-        assert_eq!(parse_board("AsKhQcJd2s").unwrap().street().unwrap(), Street::River);
+        assert_eq!(
+            parse_board("AsKhQcJd2s").unwrap().street().unwrap(),
+            Street::River
+        );
         assert_eq!(parse_street("turn").unwrap(), Street::Turn);
-        assert!(cards_are_disjoint(&parse_board("AsKhQcJd2s").unwrap().cards().to_vec(), &parse_hole_cards("2c3d").unwrap().cards()));
+        assert!(cards_are_disjoint(
+            parse_board("AsKhQcJd2s").unwrap().cards(),
+            &parse_hole_cards("2c3d").unwrap().cards()
+        ));
     }
 
     #[test]

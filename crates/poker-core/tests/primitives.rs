@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use poker_core::{
-    parse_board, parse_card, parse_hole_cards, validate_hole_cards_against_board, Board, Card, CardParseError,
-    CardSetError, HoleCardsParseError, PokerError, Rank, Street, Suit,
+    parse_board, parse_card, parse_hole_cards, validate_hole_cards_against_board, Board, Card,
+    CardParseError, CardSetError, HoleCardsParseError, PokerError, Rank, Street, Suit,
 };
 
 #[test]
@@ -36,7 +36,10 @@ fn board_parse_and_validation_rejects_duplicates() {
     assert_eq!(Board::parse_exact("AsKsQsJsTs").unwrap(), board);
 
     let duplicate = parse_board("AsAsQsJsTs").unwrap_err();
-    assert!(matches!(duplicate, PokerError::CardSet(CardSetError::DuplicateCard(_))));
+    assert!(matches!(
+        duplicate,
+        PokerError::CardSet(CardSetError::DuplicateCard(_))
+    ));
 }
 
 #[test]
@@ -59,16 +62,24 @@ fn board_and_hole_cards_have_the_expected_counts_and_overlap_rules() {
 
     let overlapping = parse_hole_cards("9h2c").unwrap();
     let err = validate_hole_cards_against_board(overlapping, &board).unwrap_err();
-    assert!(matches!(err, PokerError::HoleCardsHitBoard { card } if card == Card::from_str("9h").unwrap()));
+    assert!(
+        matches!(err, PokerError::HoleCardsHitBoard { card } if card == Card::from_str("9h").unwrap())
+    );
 }
 
 #[test]
 fn parsers_reject_invalid_literals_exactly() {
     let card_err = parse_card("1x").unwrap_err();
-    assert!(matches!(card_err, PokerError::Card(CardParseError::InvalidRank('1'))));
+    assert!(matches!(
+        card_err,
+        PokerError::Card(CardParseError::InvalidRank('1'))
+    ));
 
     let board_err = parse_board("As Ks").unwrap_err();
-    assert!(matches!(board_err, PokerError::CardSet(CardSetError::WrongBoardLength(2))));
+    assert!(matches!(
+        board_err,
+        PokerError::CardSet(CardSetError::WrongBoardLength(2))
+    ));
 }
 
 #[test]
@@ -87,7 +98,9 @@ fn support_types_cover_expected_ordering_and_deck_size() {
     assert_eq!(Suit::Clubs.index(), 0);
     assert_eq!(Suit::Spades.index(), 3);
 
-    let deck = (0u8..52).map(|index| Card::from_index(index).unwrap()).collect::<Vec<_>>();
+    let deck = (0u8..52)
+        .map(|index| Card::from_index(index).unwrap())
+        .collect::<Vec<_>>();
     assert_eq!(deck.len(), 52);
     assert_eq!(deck.first().unwrap().to_string(), "2c");
     assert_eq!(deck.last().unwrap().to_string(), "As");

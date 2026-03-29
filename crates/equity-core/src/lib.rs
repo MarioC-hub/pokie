@@ -5,7 +5,8 @@
 use std::{cmp::Ordering, fmt};
 
 use poker_core::{
-    validate_hole_cards_against_board, Board, Card, CardSetError, HoleCards, PokerError, PrivateHand, Street,
+    validate_hole_cards_against_board, Board, Card, CardSetError, HoleCards, PokerError,
+    PrivateHand, Street,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -98,7 +99,9 @@ impl From<PokerError> for EquityError {
 }
 
 pub fn evaluate_seven(board: &Board, hand: &PrivateHand) -> Result<HandRank, EquityError> {
-    board.validate_for_street(Street::River).map_err(EquityError::from)?;
+    board
+        .validate_for_street(Street::River)
+        .map_err(EquityError::from)?;
     validate_hole_cards_against_board(*hand, board)?;
     hand.validate().map_err(EquityError::from)?;
     let cards = combined_cards(board, hand);
@@ -123,8 +126,14 @@ pub fn evaluate_seven(board: &Board, hand: &PrivateHand) -> Result<HandRank, Equ
     Ok(best.expect("seven cards always yield at least one five-card subset"))
 }
 
-pub fn compare_hands_checked(board: &Board, oop: &PrivateHand, ip: &PrivateHand) -> Result<Ordering, EquityError> {
-    board.validate_for_street(Street::River).map_err(EquityError::from)?;
+pub fn compare_hands_checked(
+    board: &Board,
+    oop: &PrivateHand,
+    ip: &PrivateHand,
+) -> Result<Ordering, EquityError> {
+    board
+        .validate_for_street(Street::River)
+        .map_err(EquityError::from)?;
     validate_hole_cards_against_board(*oop, board)?;
     validate_hole_cards_against_board(*ip, board)?;
     oop.validate().map_err(EquityError::from)?;
@@ -139,7 +148,11 @@ pub fn compare_hands(board: &Board, oop: HoleCards, ip: HoleCards) -> Ordering {
     compare_hands_checked(board, &oop, &ip).expect("invalid showdown inputs")
 }
 
-pub fn compare_hands_result(board: &Board, oop: HoleCards, ip: HoleCards) -> Result<Ordering, EquityError> {
+pub fn compare_hands_result(
+    board: &Board,
+    oop: HoleCards,
+    ip: HoleCards,
+) -> Result<Ordering, EquityError> {
     compare_hands_checked(board, &oop, &ip)
 }
 
@@ -167,7 +180,11 @@ pub fn compare_hole_cards_on_board(
     compare_hands_checked(board, first, second)
 }
 
-pub fn showdown(board: &Board, oop: HoleCards, ip: HoleCards) -> Result<ShowdownOutcome, EquityError> {
+pub fn showdown(
+    board: &Board,
+    oop: HoleCards,
+    ip: HoleCards,
+) -> Result<ShowdownOutcome, EquityError> {
     match compare_hands_checked(board, &oop, &ip)? {
         Ordering::Less => Ok(ShowdownOutcome::IpWins),
         Ordering::Equal => Ok(ShowdownOutcome::Tie),
@@ -189,7 +206,11 @@ fn combined_cards(board: &Board, hand: &PrivateHand) -> [Card; 7] {
     ]
 }
 
-fn validate_unique_showdown_cards(board: &Board, first: &PrivateHand, second: &PrivateHand) -> Result<(), EquityError> {
+fn validate_unique_showdown_cards(
+    board: &Board,
+    first: &PrivateHand,
+    second: &PrivateHand,
+) -> Result<(), EquityError> {
     for card in first.iter() {
         if board.contains(card) {
             return Err(EquityError::DuplicateCard(card));
@@ -213,9 +234,9 @@ fn evaluate_five(cards: [Card; 5]) -> HandRank {
     let mut suit_counts = [0u8; 4];
     for card in cards {
         rank_counts[card.rank() as usize] += 1;
-        suit_counts[card.suit().index() as usize] += 1;
+        suit_counts[card.suit().index()] += 1;
     }
-    let flush = suit_counts.iter().any(|count| *count == 5);
+    let flush = suit_counts.contains(&5);
     let straight_high = straight_high(&rank_counts);
     let groups = rank_groups(&rank_counts);
     let rank_vector = ranks_desc(&rank_counts);
@@ -227,7 +248,10 @@ fn evaluate_five(cards: [Card; 5]) -> HandRank {
     }
 
     if groups[0].0 == 4 {
-        return HandRank::new(HandCategory::FourOfAKind, [groups[0].1, groups[1].1, 0, 0, 0]);
+        return HandRank::new(
+            HandCategory::FourOfAKind,
+            [groups[0].1, groups[1].1, 0, 0, 0],
+        );
     }
     if groups[0].0 == 3 && groups[1].0 == 2 {
         return HandRank::new(HandCategory::FullHouse, [groups[0].1, groups[1].1, 0, 0, 0]);
@@ -240,7 +264,10 @@ fn evaluate_five(cards: [Card; 5]) -> HandRank {
     }
     if groups[0].0 == 3 {
         let kickers = kicker_ranks(&groups, 2);
-        return HandRank::new(HandCategory::ThreeOfAKind, [groups[0].1, kickers[0], kickers[1], 0, 0]);
+        return HandRank::new(
+            HandCategory::ThreeOfAKind,
+            [groups[0].1, kickers[0], kickers[1], 0, 0],
+        );
     }
     if groups[0].0 == 2 && groups[1].0 == 2 {
         let high_pair = groups[0].1.max(groups[1].1);
@@ -250,7 +277,10 @@ fn evaluate_five(cards: [Card; 5]) -> HandRank {
     }
     if groups[0].0 == 2 {
         let kickers = kicker_ranks(&groups, 3);
-        return HandRank::new(HandCategory::OnePair, [groups[0].1, kickers[0], kickers[1], kickers[2], 0]);
+        return HandRank::new(
+            HandCategory::OnePair,
+            [groups[0].1, kickers[0], kickers[1], kickers[2], 0],
+        );
     }
 
     HandRank::new(HandCategory::HighCard, rank_vector)
@@ -337,12 +367,18 @@ mod tests {
         let bluff_catcher = PrivateHand::from_str("KdQd").unwrap();
         let air = PrivateHand::from_str("3c4c").unwrap();
 
-        assert!(compare_hands_checked(&board, &value, &bluff_catcher).unwrap().is_gt());
-        assert!(compare_hands_checked(&board, &air, &bluff_catcher).unwrap().is_lt());
+        assert!(compare_hands_checked(&board, &value, &bluff_catcher)
+            .unwrap()
+            .is_gt());
+        assert!(compare_hands_checked(&board, &air, &bluff_catcher)
+            .unwrap()
+            .is_lt());
 
         let tie_board = Board::from_str("AhKdQsJcTc").unwrap();
         let tie_a = PrivateHand::from_str("2c3d").unwrap();
         let tie_b = PrivateHand::from_str("4h5s").unwrap();
-        assert!(compare_hands_checked(&tie_board, &tie_a, &tie_b).unwrap().is_eq());
+        assert!(compare_hands_checked(&tie_board, &tie_a, &tie_b)
+            .unwrap()
+            .is_eq());
     }
 }

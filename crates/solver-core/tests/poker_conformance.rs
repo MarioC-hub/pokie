@@ -34,7 +34,10 @@ fn polarized_config(iterations: usize) -> SolveConfig {
                 small_blind: 1,
                 big_blind: 2,
             },
-            rake_profile: RakeProfile { rake_bps: 0, cap: 0 },
+            rake_profile: RakeProfile {
+                rake_bps: 0,
+                cap: 0,
+            },
         },
         ranges: RangeConfig {
             oop_range: WeightedRange::from_hands(vec![
@@ -42,7 +45,8 @@ fn polarized_config(iterations: usize) -> SolveConfig {
                 (HoleCards::from_str("AcJc").unwrap(), 1.0),
             ])
             .unwrap(),
-            ip_range: WeightedRange::from_hands(vec![(HoleCards::from_str("KcQh").unwrap(), 1.0)]).unwrap(),
+            ip_range: WeightedRange::from_hands(vec![(HoleCards::from_str("KcQh").unwrap(), 1.0)])
+                .unwrap(),
         },
         tree_template: RiverTreeTemplate {
             template_id: RIVER_SINGLE_BET_TEMPLATE_ID.to_string(),
@@ -98,9 +102,21 @@ fn polarized_river_exact_equilibrium_profile_is_zero_exploitability() {
         1e-12,
     );
     assert_close(report.profile_value_p0, fixture.expected_value_p0, 1e-12);
-    assert!(report.nash_conv <= fixture.max_nash_conv, "nash_conv too high: {}", report.nash_conv);
-    assert!(report.p0_improvement <= fixture.max_nash_conv, "p0 improvement too high: {}", report.p0_improvement);
-    assert!(report.p1_improvement <= fixture.max_nash_conv, "p1 improvement too high: {}", report.p1_improvement);
+    assert!(
+        report.nash_conv <= fixture.max_nash_conv,
+        "nash_conv too high: {}",
+        report.nash_conv
+    );
+    assert!(
+        report.p0_improvement <= fixture.max_nash_conv,
+        "p0 improvement too high: {}",
+        report.p0_improvement
+    );
+    assert!(
+        report.p1_improvement <= fixture.max_nash_conv,
+        "p1 improvement too high: {}",
+        report.p1_improvement
+    );
 }
 
 #[test]
@@ -113,17 +129,23 @@ fn polarized_river_first_iteration_regrets_match_exact_fixture() {
     assert_eq!(report.iteration_index, 1);
 
     assert_slice_close(
-        state.regret_row_by_key(&game, &infoset_key("oop", "7c7h", "root")).unwrap(),
+        state
+            .regret_row_by_key(&game, &infoset_key("oop", "7c7h", "root"))
+            .unwrap(),
         &[-1.25, 1.25],
         1e-12,
     );
     assert_slice_close(
-        state.regret_row_by_key(&game, &infoset_key("oop", "AcJc", "root")).unwrap(),
+        state
+            .regret_row_by_key(&game, &infoset_key("oop", "AcJc", "root"))
+            .unwrap(),
         &[0.0, 0.0],
         1e-12,
     );
     assert_slice_close(
-        state.regret_row_by_key(&game, &infoset_key("ip", "KcQh", "b")).unwrap(),
+        state
+            .regret_row_by_key(&game, &infoset_key("ip", "KcQh", "b"))
+            .unwrap(),
         &[-1.25, 1.25],
         1e-12,
     );
@@ -195,17 +217,26 @@ fn solve_river_spot_one_iteration_is_exact_and_self_consistent() {
     );
 
     assert_slice_close(
-        result.strategy_by_infoset.get(&infoset_key("oop", "7c7h", "root")).unwrap(),
+        result
+            .strategy_by_infoset
+            .get(&infoset_key("oop", "7c7h", "root"))
+            .unwrap(),
         &[0.5, 0.5],
         1e-12,
     );
     assert_slice_close(
-        result.strategy_by_infoset.get(&infoset_key("oop", "AcJc", "root")).unwrap(),
+        result
+            .strategy_by_infoset
+            .get(&infoset_key("oop", "AcJc", "root"))
+            .unwrap(),
         &[0.5, 0.5],
         1e-12,
     );
     assert_slice_close(
-        result.strategy_by_infoset.get(&infoset_key("ip", "KcQh", "b")).unwrap(),
+        result
+            .strategy_by_infoset
+            .get(&infoset_key("ip", "KcQh", "b"))
+            .unwrap(),
         &[0.5, 0.5],
         1e-12,
     );
@@ -263,11 +294,15 @@ fn split_key_value(line: &str) -> (&str, &str) {
 }
 
 fn parse_f64_list(value: &str) -> Vec<f64> {
-    value.split(',').map(|part| parse_f64(part.trim())).collect()
+    value
+        .split(',')
+        .map(|part| parse_f64(part.trim()))
+        .collect()
 }
 
 fn parse_f64(value: &str) -> f64 {
-    value.parse::<f64>()
+    value
+        .parse::<f64>()
         .unwrap_or_else(|_| panic!("expected f64, got {value}"))
 }
 

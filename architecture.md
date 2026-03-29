@@ -77,6 +77,13 @@ The first landed backend correctness milestone is intentionally narrower:
 - tabular `CFR` for this slice
 - exact exploitability on bounded conformance fixtures
 
+The first landed desktop integration milestone layers a thin workstation shell over the same slice:
+- `Tauri v2` packaging
+- `React + Vite + TypeScript` frontend
+- a DTO-based `app-api` boundary
+- synchronous `sample_river_request`, `validate_config`, and `solve_river_spot` commands
+- a minimal screen that shows canonical config output, root EV, exploitability, and root infoset strategies
+
 This staging note is an implementation milestone, not a rewrite of the broader v1 scope.
 
 ## 3. User Workstation Flows
@@ -464,6 +471,13 @@ The minimal event surface is:
 - `job_completed`
 - `job_failed`
 - `artifact_reused`
+
+The current landed desktop slice is intentionally narrower than the full v1 command surface. Today the shell exposes:
+- `sample_river_request`
+- `validate_config`
+- `solve_river_spot`
+
+These commands operate only on the exact river-only backend slice documented in section 2.4.
 
 ## 11. Validation and Performance Gates
 

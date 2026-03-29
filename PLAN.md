@@ -49,7 +49,7 @@ The next implementation work should follow this order:
 8. `FAST-01` to `FAST-03`
 9. `UI-01` to `UI-06`
 
-The immediate next task is `REPO-02`.
+The immediate next task is `CORE-03`.
 
 ## Phase Gates
 
@@ -58,7 +58,7 @@ The immediate next task is `REPO-02`.
 | Gate 0 | Docs and v1 scope are locked and synchronized | `done` |
 | Gate 1 | Repo scaffolding and canonical config foundation exist | `done` |
 | Gate 2 | Toy-game validation proves solver machinery works | `done` |
-| Gate 3 | One poker scenario solves end to end and loads in the desktop app | `todo` |
+| Gate 3 | One poker scenario solves end to end and loads in the desktop app | `done` |
 | Gate 4 | Full v1 workflow exists with exact cache hits and a usable explorer | `todo` |
 
 ## Task Board
@@ -96,9 +96,9 @@ The immediate next task is `REPO-02`.
 | ID | Task | Status | Depends On | Exit Criteria |
 | --- | --- | --- | --- | --- |
 | REPO-01 | Initialize Rust workspace | `done` | ARCH-03 | Cargo workspace exists with placeholder crates matching `architecture.md`, and `cargo check --workspace` passes. |
-| REPO-02 | Initialize `Tauri v2` desktop shell | `todo` | REPO-01 | Desktop app launches and can call a trivial Rust command through `app-api`. |
-| REPO-03 | Initialize `React + Vite + TypeScript` frontend | `todo` | REPO-01 | Frontend builds, hot reload works, and the app renders inside Tauri. |
-| REPO-04 | Add formatting, linting, test runners, and CI | `todo` | REPO-01, REPO-02, REPO-03 | Rust and TypeScript checks run locally and in CI. |
+| REPO-02 | Initialize `Tauri v2` desktop shell | `done` | REPO-01 | Tauri shell files, the thin `app-api` command bridge, and a Windows-host desktop smoke launch check now exist for the exact river slice. |
+| REPO-03 | Initialize `React + Vite + TypeScript` frontend | `done` | REPO-01 | React/Vite/TypeScript frontend builds, is wired to Tauri, and now passes a live Windows-host smoke run inside the desktop shell. |
+| REPO-04 | Add formatting, linting, test runners, and CI | `done` | REPO-01, REPO-02, REPO-03 | Local runner scripts now cover Rust fmt/clippy/tests/conformance plus desktop format/lint/build/shell checks, and GitHub Actions CI mirrors those checks on Linux and Windows. |
 | REPO-05 | Add fixture, regression, and benchmark directories | `done` | REPO-01 | Repository contains stable locations for fixtures, regressions, and benchmarks, with seed manifests checked in. |
 
 ### 3.5 Staged Backend Slice
@@ -152,8 +152,8 @@ The immediate next task is `REPO-02`.
 | --- | --- | --- | --- | --- |
 | V1-01 | Solve one documented baseline poker scenario end to end | `todo` | CORE-05, EVAL-03, TREE-05, SOLVE-01 | A named flop-rooted `SRP` scenario solves from canonical config to versioned artifact. |
 | V1-02 | Persist and reload the baseline artifact | `todo` | V1-01, SOLVE-03, SOLVE-05 | Strategy, diagnostics, and lineage metadata load from disk without recomputation. |
-| V1-03 | Expose minimal desktop commands and events | `todo` | REPO-02, REPO-03, V1-02 | `validate_config`, `start_solve`, `job_progress`, and `load_result` work through the app boundary. |
-| V1-04 | Build a minimal desktop workflow for one spot | `todo` | V1-03 | User can define the baseline spot, start a solve, and inspect root strategy and EV in the app. |
+| V1-03 | Expose minimal desktop commands and events | `done` | REPO-02, REPO-03, V1-02 | The exact river desktop slice now exposes `sample_river_request`, `validate_config`, and synchronous `solve_river_spot`, with a Windows-host smoke path proving the shell can validate and solve through Tauri. Queueing, progress events, and artifact loading remain later work. |
+| V1-04 | Build a minimal desktop workflow for one spot | `done` | V1-03 | The exact river desktop slice now edits one spot and shows canonical config output, root strategy, EV, and exploitability end to end in the desktop shell. Broader artifact-backed v1 workflow remains later work. |
 | V1-05 | Add baseline regression fixture and benchmark | `todo` | V1-01 | Named artifact fixture and benchmark numbers exist for the baseline poker scenario. |
 
 ### 9. Cache and Reuse
