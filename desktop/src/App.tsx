@@ -1,0 +1,314 @@
+import { useEffect, useMemo, useState } from 'react';
+import {
+  AppError,
+  RiverSolveRequest,
+  RiverSolveResponse,
+  ValidateConfigResponse,
+  fallbackSampleRequest,
+  loadSampleRequest,
+  solveRiverSpot,
+  validateConfig,
+} from './api';
+
+const numberFields = [
+  ['potSize', 'Pot size'],
+  ['oopStack', 'OOP stack'],
+  ['ipStack', 'IP stack'],
+  ['smallBlind', 'Small blind'],
+  ['bigBlind', 'Big blind'],
+  ['firstBetSize', 'First bet size'],
+  ['afterCheckBetSize', 'After-check bet size'],
+  ['iterations', 'Iterations'],
+  ['deterministicSeed', 'Deterministic seed'],
+] as const;
+
+type BusyState = 'validate' | 'solve' | 'load-sample' | null;
+
+function formatDecimal(value: number): string {
+  return value.toFixed(6);
+}
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(2)}%`;
+}
+
+function toErrorMessage(error: AppError | Error): string {
+  if ('code' in error) {
+    return `${error.code}: ${error.message}`;
+  }
+  return error.message;
+}
+
+export default function App() {
+  const [request, setRequest] = useState<RiverSolveRequest>(fallbackSampleRequest);
+  const [validation, setValidation] = useState<ValidateConfigResponse | null>(null);
+  const [result, setResult] = useState<RiverSolveResponse | null>(null);
+  const [busy, setBusy] = useState<BusyState>('load-sample');
+  const [status, setStatus] = useState('Loading the exact river sample spot…');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadSampleRequest()
+      .then((sample) => {
+        setRequest(sample);
+        setStatus('Sample river-only spot loaded.');
+      })
+      .catch(() => {
+        setStatus('Loaded fallback sample request.');
+      })
+      .finally(() => setBusy(null));
+  }, []);
+
+  const canSubmit = busy === null;
+  const summaryItems = useMemo(
+    () => [
+      ['Slice', 'HU NLHE cash · river-only · single-bet/no-raise'],
+      ['Surface', 'validate_config + solve_river_spot'],
+      ['Board', request.board],
+      ['Actor', request.playerToAct.toUpperCase()],
+    ],
+    [request.board, request.playerToAct],
+  );
+
+  function updateField<Key extends keyof RiverSolveRequest>(key: Key, value: RiverSolveRequest[Key]) {
+    setRequest((current) => ({ ...current, [key]: value }));
+  }
+
+  async function handleLoadSample() {
+    setBusy('load-sample');
+    setError(null);
+    try {
+      const sample = await loadSampleRequest();
+      setRequest(sample);
+      setValidation(null);
+      setResult(null);
+      setStatus('Sample river-only spot loaded from the desktop backend.');
+    } catch {
+      setRequest(fallbackSampleRequest);
+      setValidation(null);
+      setResult(null);
+      setStatus('Loaded fallback sample request because the desktop backend sample command was unavailable.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleValidate() {
+    setBusy('validate');
+    setError(null);
+    setResult(null);
+    try {
+      const response = await validateConfig(request);
+      setValidation(response);
+      setStatus('Config validated and canonicalized by the Rust backend.');
+    } catch (error) {
+      setValidation(null);
+      setStatus('Validation failed.');
+      setError(toErrorMessage(error as AppError));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleSolve() {
+    setBusy('solve');
+    setError(null);
+    try {
+      const nextValidation = await validateConfig(request);
+      const solveResponse = await solveRiverSpot(request);
+      setValidation(nextValidation);
+      setResult(solveResponse);
+      setStatus('Solve completed through the exact river backend slice.');
+    } catch (error) {
+      setResult(null);
+      setStatus('Solve failed.');
+      setError(toErrorMessage(error as AppError));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <main className="app-shell">
+      <section className="hero card">
+        <div>
+          <p className="eyebrow">Pokie desktop slice</p>
+          <h1>Exact river conformance-backed desktop shell</h1>
+          <p className="lede">
+            This app is intentionally narrow: it validates and solves the current exact heads-up NLHE
+            river slice through the app-api boundary.
+          </p>
+        </div>
+        <div className="summary-grid">
+          {summaryItems.map(([label, value]) => (
+            <div className="summary-item" key={label}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="content-grid">
+        <section className="card">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Scenario builder</p>
+              <h2>River solve request</h2>
+            </div>
+            <div className="button-row">
+              <button type="button" onClick={handleLoadSample} disabled={!canSubmit}>
+                Load sample
+              </button>
+              <button type="button" onClick={handleValidate} disabled={!canSubmit}>
+                Validate
+              </button>
+              <button type="button" className="primary" onClick={handleSolve} disabled={!canSubmit}>
+                Solve
+              </button>
+            </div>
+          </div>
+
+          <label className="field">
+            <span>Board</span>
+            <input value={request.board} onChange={(event) => updateField('board', event.target.value)} />
+          </label>
+
+          <div className="two-column">
+            <label className="field">
+              <span>OOP range</span>
+              <textarea
+                rows={4}
+                value={request.oopRange}
+                onChange={(event) => updateField('oopRange', event.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span>IP range</span>
+              <textarea
+                rows={4}
+                value={request.ipRange}
+                onChange={(event) => updateField('ipRange', event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="field-grid">
+            {numberFields.map(([key, label]) => (
+              <label className="field" key={key}>
+                <span>{label}</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={request[key]}
+                  onChange={(event) => updateField(key, Number(event.target.value))}
+                />
+              </label>
+            ))}
+            <label className="field">
+              <span>Player to act</span>
+              <select
+                value={request.playerToAct}
+                onChange={(event) => updateField('playerToAct', event.target.value as RiverSolveRequest['playerToAct'])}
+              >
+                <option value="oop">OOP</option>
+                <option value="ip">IP</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section className="stack">
+          <section className="card status-card">
+            <p className="eyebrow">Run status</p>
+            <h2>{busy ? 'Working…' : 'Ready'}</h2>
+            <p>{status}</p>
+            {error ? <pre className="error-block">{error}</pre> : null}
+          </section>
+
+          <section className="card">
+            <p className="eyebrow">Validation</p>
+            <h2>Canonical config</h2>
+            {validation ? (
+              <>
+                <dl className="metric-list">
+                  <div>
+                    <dt>Config hash</dt>
+                    <dd>{validation.configHash}</dd>
+                  </div>
+                  <div>
+                    <dt>Compatible deals</dt>
+                    <dd>{validation.compatibleDealCount}</dd>
+                  </div>
+                </dl>
+                <pre className="json-block">{JSON.stringify(validation.normalized, null, 2)}</pre>
+              </>
+            ) : (
+              <p className="placeholder">Validate a request to inspect the canonicalized backend config.</p>
+            )}
+          </section>
+
+          <section className="card">
+            <p className="eyebrow">Solve result</p>
+            <h2>Root EV and exploitability</h2>
+            {result ? (
+              <>
+                <dl className="metric-list">
+                  <div>
+                    <dt>Config hash</dt>
+                    <dd>{result.configHash}</dd>
+                  </div>
+                  <div>
+                    <dt>Tree identity</dt>
+                    <dd>{result.treeIdentity}</dd>
+                  </div>
+                  <div>
+                    <dt>Iterations</dt>
+                    <dd>{result.iterations}</dd>
+                  </div>
+                  <div>
+                    <dt>Root EV (OOP)</dt>
+                    <dd>{formatDecimal(result.rootValueOop)}</dd>
+                  </div>
+                  <div>
+                    <dt>Nash conv</dt>
+                    <dd>{formatDecimal(result.nashConv)}</dd>
+                  </div>
+                  <div>
+                    <dt>P0 improvement</dt>
+                    <dd>{formatDecimal(result.p0Improvement)}</dd>
+                  </div>
+                  <div>
+                    <dt>P1 improvement</dt>
+                    <dd>{formatDecimal(result.p1Improvement)}</dd>
+                  </div>
+                </dl>
+
+                <div className="infoset-grid">
+                  {result.rootInfosets.map((infoset) => (
+                    <article className="infoset-card" key={infoset.key}>
+                      <header>
+                        <strong>{infoset.player.toUpperCase()} · {infoset.privateHand}</strong>
+                        <span>{infoset.history}</span>
+                      </header>
+                      <ul>
+                        {infoset.actions.map((action) => (
+                          <li key={`${infoset.key}-${action.label}`}>
+                            <span>{action.label}</span>
+                            <strong>{formatPercent(action.probability)}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="placeholder">Solve a validated request to inspect root EV, exploitability, and root infoset strategies.</p>
+            )}
+          </section>
+        </section>
+      </section>
+    </main>
+  );
+}

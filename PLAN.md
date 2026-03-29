@@ -49,7 +49,7 @@ The next implementation work should follow this order:
 8. `FAST-01` to `FAST-03`
 9. `UI-01` to `UI-06`
 
-The immediate next task is `REPO-02`.
+The immediate next task is `REPO-04`.
 
 ## Phase Gates
 
@@ -58,7 +58,7 @@ The immediate next task is `REPO-02`.
 | Gate 0 | Docs and v1 scope are locked and synchronized | `done` |
 | Gate 1 | Repo scaffolding and canonical config foundation exist | `done` |
 | Gate 2 | Toy-game validation proves solver machinery works | `done` |
-| Gate 3 | One poker scenario solves end to end and loads in the desktop app | `todo` |
+| Gate 3 | One poker scenario solves end to end and loads in the desktop app | `in_progress` |
 | Gate 4 | Full v1 workflow exists with exact cache hits and a usable explorer | `todo` |
 
 ## Task Board
@@ -96,8 +96,8 @@ The immediate next task is `REPO-02`.
 | ID | Task | Status | Depends On | Exit Criteria |
 | --- | --- | --- | --- | --- |
 | REPO-01 | Initialize Rust workspace | `done` | ARCH-03 | Cargo workspace exists with placeholder crates matching `architecture.md`, and `cargo check --workspace` passes. |
-| REPO-02 | Initialize `Tauri v2` desktop shell | `todo` | REPO-01 | Desktop app launches and can call a trivial Rust command through `app-api`. |
-| REPO-03 | Initialize `React + Vite + TypeScript` frontend | `todo` | REPO-01 | Frontend builds, hot reload works, and the app renders inside Tauri. |
+| REPO-02 | Initialize `Tauri v2` desktop shell | `in_progress` | REPO-01 | Tauri shell files, a thin `app-api` command bridge, and Windows-target compile validation now exist. Finish with an interactive desktop launch check on a Windows host. |
+| REPO-03 | Initialize `React + Vite + TypeScript` frontend | `in_progress` | REPO-01 | React/Vite/TypeScript frontend now builds and is wired to the desktop shell. Finish with live hot-reload/render validation inside Tauri. |
 | REPO-04 | Add formatting, linting, test runners, and CI | `todo` | REPO-01, REPO-02, REPO-03 | Rust and TypeScript checks run locally and in CI. |
 | REPO-05 | Add fixture, regression, and benchmark directories | `done` | REPO-01 | Repository contains stable locations for fixtures, regressions, and benchmarks, with seed manifests checked in. |
 
@@ -152,8 +152,8 @@ The immediate next task is `REPO-02`.
 | --- | --- | --- | --- | --- |
 | V1-01 | Solve one documented baseline poker scenario end to end | `todo` | CORE-05, EVAL-03, TREE-05, SOLVE-01 | A named flop-rooted `SRP` scenario solves from canonical config to versioned artifact. |
 | V1-02 | Persist and reload the baseline artifact | `todo` | V1-01, SOLVE-03, SOLVE-05 | Strategy, diagnostics, and lineage metadata load from disk without recomputation. |
-| V1-03 | Expose minimal desktop commands and events | `todo` | REPO-02, REPO-03, V1-02 | `validate_config`, `start_solve`, `job_progress`, and `load_result` work through the app boundary. |
-| V1-04 | Build a minimal desktop workflow for one spot | `todo` | V1-03 | User can define the baseline spot, start a solve, and inspect root strategy and EV in the app. |
+| V1-03 | Expose minimal desktop commands and events | `in_progress` | REPO-02, REPO-03, V1-02 | The current shell exposes `sample_river_request`, `validate_config`, and synchronous `solve_river_spot` for the exact river slice. Queueing, progress events, and artifact loading remain. |
+| V1-04 | Build a minimal desktop workflow for one spot | `in_progress` | V1-03 | The current shell edits one exact river spot and shows canonical config output, root strategy, EV, and exploitability. Broader artifact-backed v1 workflow remains. |
 | V1-05 | Add baseline regression fixture and benchmark | `todo` | V1-01 | Named artifact fixture and benchmark numbers exist for the baseline poker scenario. |
 
 ### 9. Cache and Reuse
